@@ -28,8 +28,9 @@ async function readBody(response) {
 
 let release;
 const existing = await fetch(`${api}/releases/tags/${tag}?access_token=${token}`);
-if (existing.ok) {
-  release = await readBody(existing);
+const found = existing.ok ? await readBody(existing) : null;
+if (found && found.id) {
+  release = found;
   console.log(`release ${tag} already exists (id ${release.id})`);
 } else {
   const created = await fetch(`${api}/releases`, {
