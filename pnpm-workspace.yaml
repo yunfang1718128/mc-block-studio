@@ -1,0 +1,4 @@
+# Marks this directory as its own pnpm workspace root so pnpm does not walk up
+# into the parent repository's workspace.
+packages:
+  - "."
