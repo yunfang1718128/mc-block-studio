@@ -75,9 +75,18 @@ export function CropEditor({
 }) {
   const crop = useStudio((s) => s.crop);
   const setCrop = useStudio((s) => s.setCrop);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const dragRef = useRef<DragState | null>(null);
+  // Radix mounts the dialog content one commit after `open` flips true, so the
+  // `[open]` effects below run before the refs exist. Mirroring the nodes into
+  // state re-renders this component once they attach, so the effects can run.
+  const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null);
+  const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
+
+  const attachCanvas = useCallback((node: HTMLCanvasElement | null) => {
+    canvasRef.current = node;
+    setCanvasEl(node);
+  }, []);
 
   const bounds = { width: source.width, height: source.height };
   const [rect, setRect] = useState<CropRect>(crop ?? { x: 0, y: 0, ...bounds });
@@ -94,31 +103,27 @@ export function CropEditor({
   const dispH = Math.max(1, Math.round(source.height * scale));
 
   useEffect(() => {
-    if (!open) return;
-    const element = containerRef.current;
-    if (!element) return;
-    const measure = () => setAvailWidth(element.clientWidth);
+    if (!open || !containerEl) return;
+    const measure = () => setAvailWidth(containerEl.clientWidth);
     measure();
     const observer = new ResizeObserver(measure);
-    observer.observe(element);
+    observer.observe(containerEl);
     window.addEventListener("resize", measure);
     return () => {
       observer.disconnect();
       window.removeEventListener("resize", measure);
     };
-  }, [open]);
+  }, [open, containerEl]);
 
   useEffect(() => {
-    if (!open) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    canvas.width = source.width;
-    canvas.height = source.height;
-    const ctx = canvas.getContext("2d");
+    if (!open || !canvasEl) return;
+    canvasEl.width = source.width;
+    canvasEl.height = source.height;
+    const ctx = canvasEl.getContext("2d");
     if (!ctx) return;
     const imageData = new ImageData(new Uint8ClampedArray(source.data), source.width, source.height);
     ctx.putImageData(imageData, 0, 0);
-  }, [source, open]);
+  }, [source, open, canvasEl]);
 
   useEffect(() => {
     if (!open) return;
@@ -236,10 +241,10 @@ export function CropEditor({
           ))}
         </div>
 
-        <div ref={containerRef} className="flex max-h-[60vh] justify-center overflow-auto rounded-lg bg-gray-100 p-3 dark:bg-zinc-950/60">
+        <div ref={setContainerEl} className="flex max-h-[60vh] justify-center overflow-auto rounded-lg bg-gray-100 p-3 dark:bg-zinc-950/60">
           <div className="relative" style={{ width: dispW, height: dispH }}>
             <canvas
-              ref={canvasRef}
+              ref={attachCanvas}
               className="block select-none"
               style={{ width: dispW, height: dispH, imageRendering: "pixelated" }}
             />
