@@ -214,7 +214,6 @@ export const BLOCKS: BlockInfo[] = [
   { id: "respawn_anchor", name: "重生锚", category: "功能杂项", kind: "functional", rgb: [40, 24, 63], variance: 1281, alpha: 255, faces: {"north":"respawn_anchor_side0","south":"respawn_anchor_side0","east":"respawn_anchor_side0","west":"respawn_anchor_side0","top":"respawn_anchor_top","bottom":"respawn_anchor_bottom"} },
   { id: "dried_kelp_block", name: "干海带块", category: "功能杂项", kind: "functional", rgb: [38, 49, 30], variance: 637, alpha: 255, faces: {"north":"dried_kelp_side_a","south":"dried_kelp_side_a","east":"dried_kelp_side_b","west":"dried_kelp_side_a","top":"dried_kelp_top","bottom":"dried_kelp_top"} },
   { id: "chiseled_bookshelf", name: "雕纹书架", category: "功能杂项", kind: "functional", rgb: [175, 142, 86], variance: 309, alpha: 255, faces: {"north":"chiseled_bookshelf_side","south":"chiseled_bookshelf_side","east":"chiseled_bookshelf_side","west":"chiseled_bookshelf_side","top":"chiseled_bookshelf_top","bottom":"chiseled_bookshelf_side"} },
-  { id: "dragon_egg", name: "龙蛋", category: "功能杂项", kind: "functional", rgb: [13, 9, 16], variance: 68, alpha: 255, faces: {"north":"dragon_egg","south":"dragon_egg","east":"dragon_egg","west":"dragon_egg","top":"dragon_egg","bottom":"dragon_egg"} },
   { id: "slime_block", name: "黏液块", category: "功能杂项", kind: "functional", rgb: [116, 173, 102], variance: 58, alpha: 180, faces: {"north":"slime","south":"slime","east":"slime","west":"slime","top":"slime","bottom":"slime"} },
 ];
 

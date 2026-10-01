@@ -319,7 +319,6 @@ pushFunctional([
   // 干海带块有两种不同的侧面。
   { java: "dried_kelp_block", name: "干海带块", category: "功能杂项", side: "dried_kelp_side_a", top: "dried_kelp_top", bottom: "dried_kelp_top", east: "dried_kelp_side_b" },
   { java: "chiseled_bookshelf", name: "雕纹书架", category: "功能杂项", side: "chiseled_bookshelf_side", top: "chiseled_bookshelf_top", bottom: "chiseled_bookshelf_side" },
-  { java: "dragon_egg", name: "龙蛋", category: "功能杂项", side: "dragon_egg" },
   { java: "slime_block", name: "黏液块", category: "功能杂项", side: "slime" },
 ]);
 
