@@ -8,6 +8,7 @@ import {
   type ComplexityReport,
   type SampleAlgorithm,
 } from "@/lib/imaging/sample";
+import { cropImageSource } from "@/lib/imaging/crop";
 import { loadImageSource } from "@/lib/imaging/load";
 import { buildBlockReplica, type ReplicaTextures } from "@/lib/voxel/from-block";
 import { buildFlatImage, previewFaceFor } from "@/lib/voxel/from-image";
@@ -107,6 +108,7 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
   const mode = useStudio((s) => s.mode);
   const allowed = useStudio((s) => s.allowed);
   const source = useStudio((s) => s.source);
+  const crop = useStudio((s) => s.crop);
   const algorithm = useStudio((s) => s.algorithm);
   const orientation = useStudio((s) => s.orientation);
   const thickness = useStudio((s) => s.thickness);
@@ -121,8 +123,14 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
     [allowed]
   );
 
-  // Full-image analysis depends only on the source, never on the output size.
-  const report = useMemo(() => (source ? analyzeComplexity(source) : null), [source]);
+  // Everything downstream works on the cropped source, if a crop is set.
+  const cropped = useMemo(
+    () => (source && crop ? cropImageSource(source, crop) : source),
+    [source, crop]
+  );
+
+  // Full-image analysis depends only on the (cropped) source, never on the output size.
+  const report = useMemo(() => (cropped ? analyzeComplexity(cropped) : null), [cropped]);
 
   // Resolve "auto" a single time so sampling never re-analyses the image.
   const resolvedAlgorithm: SampleAlgorithm = useMemo(() => {
@@ -131,9 +139,9 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
   }, [algorithm, report]);
 
   const image = useMemo<Generation>(() => {
-    if (mode !== "image" || !source) return EMPTY;
-    const { width, height } = gridForImage(source.width, source.height, size);
-    const colors = sampleImage(source, width, height, resolvedAlgorithm);
+    if (mode !== "image" || !cropped) return EMPTY;
+    const { width, height } = gridForImage(cropped.width, cropped.height, size);
+    const colors = sampleImage(cropped, width, height, resolvedAlgorithm);
     const preview = matchGrid(colors, palette);
 
     return {
@@ -146,7 +154,7 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
       textures: null,
       blockMap: null,
     };
-  }, [mode, source, size, resolvedAlgorithm, palette, orientation, thickness, report]);
+  }, [mode, cropped, size, resolvedAlgorithm, palette, orientation, thickness, report]);
 
   const block = useMemo<Generation>(() => {
     if (mode !== "block" || !textures) return EMPTY;

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { BLOCKS, SOLID_BLOCKS } from "@/lib/blocks";
+import type { CropRect } from "@/lib/imaging/crop";
 import type { SampleAlgorithm } from "@/lib/imaging/sample";
 import type { ImageSource } from "@/lib/imaging/sample";
 import type { Orientation } from "@/lib/voxel/from-image";
@@ -24,6 +25,9 @@ interface StudioState {
   source: ImageSource | null;
   sourceName: string;
   setSource: (source: ImageSource | null, name?: string) => void;
+  /** Region of the source image to convert, in source pixels. `null` = full image. */
+  crop: CropRect | null;
+  setCrop: (crop: CropRect | null) => void;
   algorithm: SampleAlgorithm;
   setAlgorithm: (algorithm: SampleAlgorithm) => void;
   orientation: Orientation;
@@ -79,7 +83,9 @@ export const useStudio = create<StudioState>((set) => ({
 
   source: null,
   sourceName: "",
-  setSource: (source, name) => set({ source, sourceName: name ?? "" }),
+  setSource: (source, name) => set({ source, sourceName: name ?? "", crop: null }),
+  crop: null,
+  setCrop: (crop) => set({ crop }),
   algorithm: "auto",
   setAlgorithm: (algorithm) => set({ algorithm }),
   orientation: "wall",

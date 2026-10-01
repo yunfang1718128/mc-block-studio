@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { ImageUp, Sparkles } from "lucide-react";
+import { Crop, ImageUp, Sparkles } from "lucide-react";
 import type { SampleAlgorithm } from "@/lib/imaging/sample";
 import { fileToImageSource } from "@/lib/imaging/load";
 import { useStudio } from "@/state/store";
 import { useComplexityReport } from "@/state/useGeneration";
 import { useDebouncedValue } from "@/state/useDebouncedValue";
+import { CropEditor } from "@/components/CropEditor";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 
@@ -37,6 +38,9 @@ export function ImportImageTab() {
   const source = useStudio((s) => s.source);
   const sourceName = useStudio((s) => s.sourceName);
   const setSource = useStudio((s) => s.setSource);
+  const crop = useStudio((s) => s.crop);
+  const setCrop = useStudio((s) => s.setCrop);
+  const [cropOpen, setCropOpen] = useState(false);
   const algorithm = useStudio((s) => s.algorithm);
   const setAlgorithm = useStudio((s) => s.setAlgorithm);
   const orientation = useStudio((s) => s.orientation);
@@ -95,10 +99,30 @@ export function ImportImageTab() {
       </button>
 
       {source && (
-        <p className="text-xs text-muted-foreground">
-          {sourceName || "已载入"} · {source.width}×{source.height}px
-        </p>
+        <div className="flex flex-col gap-1.5">
+          <p className="text-xs text-muted-foreground">
+            {sourceName || "已载入"} · {source.width}×{source.height}px
+          </p>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs text-muted-foreground">
+              {crop ? `已裁剪：${crop.width}×${crop.height} px` : "未裁剪（使用整图）"}
+            </span>
+            <div className="flex shrink-0 items-center gap-1">
+              {crop && (
+                <Button size="sm" variant="ghost" onClick={() => setCrop(null)}>
+                  清除
+                </Button>
+              )}
+              <Button size="sm" variant="outline" onClick={() => setCropOpen(true)}>
+                <Crop />
+                裁剪
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
+
+      {source && <CropEditor source={source} open={cropOpen} onOpenChange={setCropOpen} />}
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="algorithm">采样算法</Label>
