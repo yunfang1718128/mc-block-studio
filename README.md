@@ -10,7 +10,7 @@
 ## 下载 / 在线使用
 
 - 网页版：`https://<EdgeOne 默认域名>`（待上线）
-- Windows 桌面版（免费）：[GitHub Releases](https://github.com/yunfang1718128/mc-block-studio/releases) · [Gitee Releases](https://gitee.com/yunfang1718128/mc-block-studio/releases)（国内更快）
+- Windows 桌面版（免费）：[Gitee Releases](https://gitee.com/yunfan1718128/mc-block-studio/releases/download/v0.1.0/MC%20Block%20Studio_0.1.0_x64-setup.exe)（国内高速） · [GitHub Releases](https://github.com/yunfang1718128/mc-block-studio/releases)
 
 ## 技术栈
 
