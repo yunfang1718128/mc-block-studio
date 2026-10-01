@@ -1,6 +1,6 @@
 [package]
 name = "mc-block-studio"
-version = "0.1.0"
+version = "0.1.1"
 description = "把图片或原版方块转成 Minecraft 像素画，3D 预览并导出 .litematic。"
 authors = ["yunfang1718128"]
 license = "GPL-2.0-only"

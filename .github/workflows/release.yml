@@ -42,3 +42,8 @@ jobs:
             下载下方 `*-setup.exe` 安装（Windows x64，免管理员）。
           releaseDraft: false
           prerelease: false
+
+      - name: Publish to Gitee Release
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+        run: node scripts/gitee-release.mjs
