@@ -240,6 +240,10 @@ push("有机方块", [
 ]);
 
 push("泥土与沙", [
+  // bedrock-samples stores the tint-masked overlay as `grass_side.tga` /
+  // `grass_top.png`; the `_carried` variants hold the pre-tinted colours, which
+  // is what we want for a fixed palette.
+  ["grass_block", "草方块", "grass_side_carried", "grass_carried", "dirt"],
   ["dirt", "泥土", "dirt"],
   ["coarse_dirt", "砂土", "coarse_dirt"],
   ["rooted_dirt", "缠根泥土", "dirt_with_roots"],
