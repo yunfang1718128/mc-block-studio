@@ -12,7 +12,9 @@ if (!tag) throw new Error("missing GITHUB_REF_NAME");
 const api = `https://gitee.com/api/v5/repos/${owner}/${repo}`;
 
 const bundleDir = "src-tauri/target/release/bundle/nsis";
-const asset = readdirSync(bundleDir).find((name) => name.endsWith("-setup.exe"));
+const version = tag.replace(/^v/, "");
+const installers = readdirSync(bundleDir).filter((name) => name.endsWith("-setup.exe"));
+const asset = installers.find((name) => name.includes(`_${version}_`)) ?? installers[0];
 if (!asset) throw new Error(`no *-setup.exe found in ${bundleDir}`);
 const file = readFileSync(join(bundleDir, asset));
 console.log(`found installer ${asset} (${file.length} bytes)`);
