@@ -1,5 +1,6 @@
 import { Boxes, ImageIcon } from "lucide-react";
 import { useStudio } from "@/state/store";
+import { GenerationProvider } from "@/state/useGeneration";
 import { PaletteTray } from "@/components/PaletteTray";
 import { PreviewPanel } from "@/components/PreviewPanel";
 import { ImportImageTab } from "@/components/ImportImageTab";
@@ -19,39 +20,41 @@ export default function App() {
         <span className="text-xs text-muted-foreground">图片 / 方块 → Minecraft 像素画</span>
       </header>
 
-      <div className="flex min-h-0 flex-1">
-        <PaletteTray />
+      <GenerationProvider>
+        <div className="flex min-h-0 flex-1">
+          <PaletteTray />
 
-        <div className="flex min-w-0 flex-1 flex-col">
-          <PreviewPanel />
-          <ExportBar />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <PreviewPanel />
+            <ExportBar />
+          </div>
+
+          <aside className="flex w-80 shrink-0 flex-col border-l border-border bg-card">
+            <Tabs
+              value={mode}
+              onValueChange={(value) => setMode(value as "image" | "block")}
+              className="h-full"
+            >
+              <TabsList className="m-3 grid grid-cols-2">
+                <TabsTrigger value="image">
+                  <ImageIcon />
+                  导入图片
+                </TabsTrigger>
+                <TabsTrigger value="block">
+                  <Boxes />
+                  选择方块
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="image" className="min-h-0 overflow-y-auto">
+                <ImportImageTab />
+              </TabsContent>
+              <TabsContent value="block" className="flex min-h-0 flex-col overflow-hidden">
+                <PickBlockTab />
+              </TabsContent>
+            </Tabs>
+          </aside>
         </div>
-
-        <aside className="flex w-80 shrink-0 flex-col border-l border-border bg-card">
-          <Tabs
-            value={mode}
-            onValueChange={(value) => setMode(value as "image" | "block")}
-            className="h-full"
-          >
-            <TabsList className="m-3 grid grid-cols-2">
-              <TabsTrigger value="image">
-                <ImageIcon />
-                导入图片
-              </TabsTrigger>
-              <TabsTrigger value="block">
-                <Boxes />
-                选择方块
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="image" className="min-h-0 overflow-y-auto">
-              <ImportImageTab />
-            </TabsContent>
-            <TabsContent value="block" className="flex min-h-0 flex-col overflow-hidden">
-              <PickBlockTab />
-            </TabsContent>
-          </Tabs>
-        </aside>
-      </div>
+      </GenerationProvider>
     </div>
   );
 }

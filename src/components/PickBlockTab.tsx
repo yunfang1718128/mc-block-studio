@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { BLOCKS, CATEGORIES } from "@/lib/blocks";
 import { useStudio } from "@/state/store";
+import { useDebouncedValue } from "@/state/useDebouncedValue";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +16,14 @@ export function PickBlockTab() {
   const setMagnification = useStudio((s) => s.setMagnification);
   const [query, setQuery] = useState("");
 
+  // Commit the magnification only once dragging stops so the 3D/model rebuild
+  // never runs mid-drag.
+  const [magDraft, setMagDraft] = useState(magnification);
+  const debouncedMag = useDebouncedValue(magDraft, 200);
+  useEffect(() => {
+    if (debouncedMag !== magnification) setMagnification(debouncedMag);
+  }, [debouncedMag, magnification, setMagnification]);
+
   const grouped = useMemo(() => {
     const q = query.trim().toLowerCase();
     return CATEGORIES.map((category) => ({
@@ -25,7 +34,7 @@ export function PickBlockTab() {
     })).filter((g) => g.blocks.length > 0);
   }, [query]);
 
-  const face = TEXTURE_PIXELS * magnification;
+  const face = TEXTURE_PIXELS * magDraft;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -75,7 +84,7 @@ export function PickBlockTab() {
       <div className="flex flex-col gap-3 border-t border-border p-4">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="magnification">
-            放大倍率：<span className="font-normal text-muted-foreground">{magnification}×</span>
+            放大倍率：<span className="font-normal text-muted-foreground">{magDraft}×</span>
           </Label>
           <input
             id="magnification"
@@ -83,8 +92,8 @@ export function PickBlockTab() {
             min={1}
             max={12}
             step={1}
-            value={magnification}
-            onChange={(e) => setMagnification(Number(e.target.value))}
+            value={magDraft}
+            onChange={(e) => setMagDraft(Number(e.target.value))}
             className="w-full accent-[var(--primary)]"
           />
         </div>

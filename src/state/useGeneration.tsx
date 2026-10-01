@@ -1,8 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { BLOCKS, textureUrl } from "@/lib/blocks";
 import { FACE_DIRS, type BlockInfo, type FaceDir } from "@/lib/blocks/types";
 import { buildPalette, matchGrid } from "@/lib/color/match";
-import { analyzeComplexity, sampleImage, type ComplexityReport } from "@/lib/imaging/sample";
+import {
+  analyzeComplexity,
+  sampleImage,
+  type ComplexityReport,
+  type SampleAlgorithm,
+} from "@/lib/imaging/sample";
 import { loadImageSource } from "@/lib/imaging/load";
 import { buildBlockReplica, type ReplicaTextures } from "@/lib/voxel/from-block";
 import { buildFlatImage, previewFaceFor } from "@/lib/voxel/from-image";
@@ -83,8 +88,22 @@ export function gridForImage(width: number, height: number, longest: number) {
   return { width: Math.max(1, Math.round((longest * width) / height)), height: longest };
 }
 
-/** Derive the current voxel model and preview data from the studio state. */
-export function useGeneration(): Generation {
+interface GenerationContextValue {
+  generation: Generation;
+  report: ComplexityReport | null;
+}
+
+const GenerationContext = createContext<GenerationContextValue | null>(null);
+
+/**
+ * Computes the voxel model and preview data exactly once for the whole tree.
+ *
+ * Everything downstream (preview, export bar, side panel) reads the shared
+ * value instead of re-running the expensive sampling + matching pipeline, and
+ * the complexity report is memoised against the source image alone so it is
+ * never recomputed when only the output size or orientation changes.
+ */
+export function GenerationProvider({ children }: { children: ReactNode }) {
   const mode = useStudio((s) => s.mode);
   const allowed = useStudio((s) => s.allowed);
   const source = useStudio((s) => s.source);
@@ -102,10 +121,19 @@ export function useGeneration(): Generation {
     [allowed]
   );
 
+  // Full-image analysis depends only on the source, never on the output size.
+  const report = useMemo(() => (source ? analyzeComplexity(source) : null), [source]);
+
+  // Resolve "auto" a single time so sampling never re-analyses the image.
+  const resolvedAlgorithm: SampleAlgorithm = useMemo(() => {
+    if (algorithm !== "auto") return algorithm;
+    return report?.recommended ?? "nearest";
+  }, [algorithm, report]);
+
   const image = useMemo<Generation>(() => {
     if (mode !== "image" || !source) return EMPTY;
     const { width, height } = gridForImage(source.width, source.height, size);
-    const colors = sampleImage(source, width, height, algorithm);
+    const colors = sampleImage(source, width, height, resolvedAlgorithm);
     const preview = matchGrid(colors, palette);
 
     return {
@@ -114,11 +142,11 @@ export function useGeneration(): Generation {
       previewWidth: width,
       previewHeight: height,
       previewFace: previewFaceFor(orientation),
-      report: analyzeComplexity(source),
+      report,
       textures: null,
       blockMap: null,
     };
-  }, [mode, source, size, algorithm, palette, orientation, thickness]);
+  }, [mode, source, size, resolvedAlgorithm, palette, orientation, thickness, report]);
 
   const block = useMemo<Generation>(() => {
     if (mode !== "block" || !textures) return EMPTY;
@@ -134,5 +162,26 @@ export function useGeneration(): Generation {
     };
   }, [mode, textures, palette, magnification]);
 
-  return mode === "image" ? image : block;
+  const generation = mode === "image" ? image : block;
+  const value = useMemo<GenerationContextValue>(() => ({ generation, report }), [generation, report]);
+
+  return <GenerationContext.Provider value={value}>{children}</GenerationContext.Provider>;
+}
+
+function useGenerationContext(): GenerationContextValue {
+  const value = useContext(GenerationContext);
+  if (!value) {
+    throw new Error("useGeneration 必须在 <GenerationProvider> 内使用");
+  }
+  return value;
+}
+
+/** Derive the current voxel model and preview data from the studio state. */
+export function useGeneration(): Generation {
+  return useGenerationContext().generation;
+}
+
+/** Read the (source-only) complexity report without triggering generation. */
+export function useComplexityReport(): ComplexityReport | null {
+  return useGenerationContext().report;
 }

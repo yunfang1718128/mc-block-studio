@@ -1,9 +1,10 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ImageUp, Sparkles } from "lucide-react";
 import type { SampleAlgorithm } from "@/lib/imaging/sample";
 import { fileToImageSource } from "@/lib/imaging/load";
 import { useStudio } from "@/state/store";
-import { useGeneration } from "@/state/useGeneration";
+import { useComplexityReport } from "@/state/useGeneration";
+import { useDebouncedValue } from "@/state/useDebouncedValue";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 
@@ -14,6 +15,16 @@ const ALGORITHMS: { value: SampleAlgorithm; label: string }[] = [
   { value: "median", label: "中位数（主色）" },
   { value: "lanczos", label: "平滑重采样（Lanczos）" },
 ];
+
+const SIZE_MIN = 8;
+const SIZE_MAX = 512;
+
+/** Clamp a raw text/number input to the valid longest-edge range. */
+function clampSize(raw: string): number {
+  const n = Math.round(Number(raw));
+  if (!Number.isFinite(n)) return SIZE_MIN;
+  return Math.min(SIZE_MAX, Math.max(SIZE_MIN, n));
+}
 
 const RECOMMENDED_LABEL: Record<Exclude<SampleAlgorithm, "auto">, string> = {
   nearest: "最近邻",
@@ -34,8 +45,23 @@ export function ImportImageTab() {
   const setThickness = useStudio((s) => s.setThickness);
   const size = useStudio((s) => s.size);
   const setSize = useStudio((s) => s.setSize);
-  const report = useGeneration().report;
+  const report = useComplexityReport();
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Drag updates only the local value; the store (and thus generation) is
+  // committed once the control settles, so the slider never stutters.
+  const [sizeText, setSizeText] = useState(String(size));
+  const parsedSize = clampSize(sizeText);
+  const debouncedSize = useDebouncedValue(parsedSize, 200);
+  useEffect(() => {
+    if (debouncedSize !== size) setSize(debouncedSize);
+  }, [debouncedSize, size, setSize]);
+
+  const [thicknessDraft, setThicknessDraft] = useState(thickness);
+  const debouncedThickness = useDebouncedValue(thicknessDraft, 200);
+  useEffect(() => {
+    if (debouncedThickness !== thickness) setThickness(debouncedThickness);
+  }, [debouncedThickness, thickness, setThickness]);
 
   async function onFiles(files: FileList | null) {
     const file = files?.[0];
@@ -118,17 +144,30 @@ export function ImportImageTab() {
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="size">
-          最长边方块数：<span className="font-normal text-muted-foreground">{size}</span>
-        </Label>
+        <div className="flex items-center justify-between gap-2">
+          <Label htmlFor="size">
+            最长边方块数：<span className="font-normal text-muted-foreground">{parsedSize}</span>
+          </Label>
+          <input
+            id="size"
+            type="number"
+            min={SIZE_MIN}
+            max={SIZE_MAX}
+            value={sizeText}
+            onChange={(e) => setSizeText(e.target.value)}
+            onBlur={() => setSizeText(String(parsedSize))}
+            aria-label="最长边方块数"
+            className="h-8 w-20 shrink-0 rounded-md border border-input bg-background px-2 text-right text-sm tabular-nums shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          />
+        </div>
         <input
-          id="size"
+          id="size-range"
           type="range"
-          min={8}
-          max={96}
+          min={SIZE_MIN}
+          max={SIZE_MAX}
           step={1}
-          value={size}
-          onChange={(e) => setSize(Number(e.target.value))}
+          value={parsedSize}
+          onChange={(e) => setSizeText(e.target.value)}
           className="w-full accent-[var(--primary)]"
         />
       </div>
@@ -140,8 +179,8 @@ export function ImportImageTab() {
           type="number"
           min={1}
           max={8}
-          value={thickness}
-          onChange={(e) => setThickness(Math.max(1, Number(e.target.value) || 1))}
+          value={thicknessDraft}
+          onChange={(e) => setThicknessDraft(Math.max(1, Number(e.target.value) || 1))}
           className="h-9 w-24 rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
       </div>
