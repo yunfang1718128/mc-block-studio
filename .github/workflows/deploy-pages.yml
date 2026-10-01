@@ -1,19 +1,27 @@
-name: Deploy Pages
+name: Deploy to GitHub Pages
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
   contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/configure-pages@v5
 
       - uses: pnpm/action-setup@v4
 
@@ -28,10 +36,18 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Deploy to EdgeOne Pages
-        uses: TencentEdgeOne/edgeone-pages-action@v1
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          token: ${{ secrets.EDGEONE_API_TOKEN }}
-          project-name: mc-block-studio
-          build-path: ./dist
-          node-version: "22"
+          path: ./dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
