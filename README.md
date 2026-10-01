@@ -1,34 +1,45 @@
-# mc-block-studio
+# MC Block Studio
 
-A browser-based studio that turns images — or a single vanilla Minecraft block — into
-pixel-art voxel builds, previews them in 3D, and exports them as `.litematic` schematics.
+把**图片**或**任意原版方块**转换成 Minecraft 像素画（体素建筑），提供 2D 方块展开图与 3D 预览，并导出 `.litematic` 投影文件。
 
-- **Tab 1 — Import image:** photograph/illustration → flat pixel art (orientation switchable).
-- **Tab 2 — Pick a block:** a vanilla full block → a hollow, magnified 3D replica
-  (per-face or uniform textures, nearest-neighbour to keep the vanilla pixel style).
+- **导入图片**：照片 / 插画 → 像素画，可切换朝向。
+- **选择方块**：选一个原版完整方块 → 生成中空放大的 3D 复刻（逐面贴图，最近邻采样保留原版像素风格）。
 
-All rendering and file generation happen client-side; there is no backend.
+全部渲染与文件生成都在浏览器本地完成，**没有后端、不上传任何数据**。可离线使用。
 
-## Status
+## 下载 / 在线使用
 
-Early. Milestone **M0** only: project scaffold plus a from-scratch NBT encoder and
-Litematica v6 encoder (with tests). The generator pipeline and UI land in M1–M3.
+- 网页版：`https://<EdgeOne 默认域名>`（待上线）
+- Windows 桌面版（免费）：[GitHub Releases](https://github.com/yunfang1718128/mc-block-studio/releases) · [Gitee Releases](https://gitee.com/yunfang1718128/mc-block-studio/releases)（国内更快）
 
-## Stack
+## 技术栈
 
-Vite · React 19 · TypeScript · Tailwind CSS v4 · three.js/react-three-fiber · Zustand · pako
+Vite · React 19 · TypeScript · Tailwind CSS v4 · three.js · Zustand · pako · Tauri v2（桌面壳）
 
-## Develop
+## 本地开发
 
 ```bash
 pnpm install
-pnpm dev          # dev server
-pnpm test         # vitest (unit)
+pnpm dev          # 开发服务器 http://localhost:5173
+pnpm test         # 单元测试（vitest）
 pnpm typecheck    # tsc --noEmit
-pnpm build        # typecheck + production build
+pnpm build        # 类型检查 + 生产构建
 ```
 
-## License
+## 构建 Windows 桌面版
 
-GPL-2.0-only. See [`LICENSE`](./LICENSE) and [`NOTICE`](./NOTICE). Block textures are
-derived from [`Mojang/bedrock-samples`](https://github.com/Mojang/bedrock-samples) (MIT).
+需要 Rust 工具链（含 MSVC）与系统 WebView2 运行时（Win10/11 已内置）。
+
+```bash
+pnpm desktop:dev     # 桌面开发模式
+pnpm desktop:build   # 生成 NSIS 安装包，输出在 src-tauri/target/release/bundle/
+```
+
+## 数据来源
+
+方块贴图与调色板由 `Mojang/bedrock-samples`（MIT）生成，见 [`NOTICE`](./NOTICE)。
+重建目录：`pnpm fetch:blocks` + `pnpm build:blocks`。
+
+## 许可证
+
+GPL-2.0-only，见 [`LICENSE`](./LICENSE)。

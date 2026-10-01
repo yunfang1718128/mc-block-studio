@@ -1,9 +1,10 @@
 {
   "name": "mc-block-studio",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "license": "GPL-2.0-only",
+  "packageManager": "pnpm@12.3.4",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
@@ -12,7 +13,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "fetch:blocks": "node scripts/fetch-textures.mjs",
-    "build:blocks": "node scripts/build-block-data.mjs"
+    "build:blocks": "node scripts/build-block-data.mjs",
+    "tauri": "tauri",
+    "desktop:dev": "tauri dev",
+    "desktop:build": "tauri build"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.3.11",
@@ -33,6 +37,7 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
+    "@tauri-apps/cli": "^2.12.0",
     "@types/node": "^20.19.43",
     "@types/pako": "^2.0.4",
     "@types/pngjs": "^6.0.5",

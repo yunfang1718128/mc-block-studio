@@ -7,6 +7,10 @@ dist
 dist-ssr
 *.local
 
+# tauri
+/src-tauri/target/
+/src-tauri/gen/
+
 # test output
 coverage
 
