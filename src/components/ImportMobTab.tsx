@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FileUp, PawPrint } from "lucide-react";
+import { ExternalLink, FileUp, PawPrint } from "lucide-react";
 import { SOLID_BLOCKS } from "@/lib/blocks";
 import { parseMcvox } from "@/lib/voxel/mcvox";
 import { BUILTIN_MOBS, mobUrl, type BuiltinMob, type MobCategory } from "@/lib/voxel/builtin-mobs";
@@ -179,6 +179,15 @@ export function ImportMobTab() {
             <span className="text-sm font-medium">点击选择 .mcvox，或拖拽到此处</span>
             <span className="text-xs text-muted-foreground">由 capture 模组在游戏内导出</span>
           </button>
+          <a
+            href="https://github.com/yunfang1718128/entity-capture"
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
+          >
+            <ExternalLink className="size-3.5" />
+            capture 模组 · GitHub
+          </a>
         </>
       )}
 
