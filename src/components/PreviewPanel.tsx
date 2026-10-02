@@ -1,4 +1,4 @@
-import { Boxes, ImageIcon } from "lucide-react";
+import { Boxes, ImageIcon, PawPrint } from "lucide-react";
 import { BLOCKS } from "@/lib/blocks";
 import { cn } from "@/lib/utils";
 import { useStudio, type ViewMode } from "@/state/store";
@@ -23,21 +23,27 @@ export function PreviewPanel() {
   const setViewMode = useStudio((s) => s.setViewMode);
   const selectedBlockId = useStudio((s) => s.selectedBlockId);
   const magnification = useStudio((s) => s.magnification);
-  const { model, preview, previewWidth, previewHeight, previewFace, blockMap } = useGeneration();
+  const capture = useStudio((s) => s.capture);
+  const { model, preview, previewWidth, previewHeight, previewFace, blockMap, error } = useGeneration();
 
   const block = selectedBlockId ? BLOCKS.find((b) => b.id === selectedBlockId) : undefined;
   const face = 16 * magnification;
 
   const imageBounds = !!preview && previewWidth > 0;
   const blockReady = !!block && !!blockMap;
-  const hasContent = mode === "image" ? imageBounds : blockReady;
+  const hasContent =
+    mode === "image" ? imageBounds : mode === "block" ? blockReady : !!model;
 
   const missing =
     mode === "image"
       ? { icon: <ImageIcon className="size-8" />, text: "请先在右侧导入图片" }
-      : block
-        ? { icon: <Boxes className="size-8" />, text: "正在加载贴图…" }
-        : { icon: <Boxes className="size-8" />, text: "请先在右侧选择目标方块" };
+      : mode === "mob"
+        ? capture
+          ? { icon: <PawPrint className="size-8" />, text: error ?? "生物模式请使用 3D 预览" }
+          : { icon: <PawPrint className="size-8" />, text: "请先在右侧导入 .mcvox 捕获包" }
+        : block
+          ? { icon: <Boxes className="size-8" />, text: "正在加载贴图…" }
+          : { icon: <Boxes className="size-8" />, text: "请先在右侧选择目标方块" };
 
   const surface =
     mode === "image" && imageBounds

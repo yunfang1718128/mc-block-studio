@@ -4,8 +4,10 @@ import type { CropRect } from "@/lib/imaging/crop";
 import type { SampleAlgorithm } from "@/lib/imaging/sample";
 import type { ImageSource } from "@/lib/imaging/sample";
 import type { Orientation } from "@/lib/voxel/from-image";
+import type { CaptureInterior } from "@/lib/voxel/from-capture";
+import type { McvoxCapture } from "@/lib/voxel/mcvox";
 
-export type Mode = "image" | "block";
+export type Mode = "image" | "block" | "mob";
 export type ViewMode = "2d" | "3d";
 export type PreviewZoom = "fit" | "100%";
 
@@ -41,6 +43,18 @@ interface StudioState {
   selectBlock: (id: string) => void;
   magnification: number;
   setMagnification: (magnification: number) => void;
+
+  /** A parsed `.mcvox` entity capture, or `null` before one is loaded. */
+  capture: McvoxCapture | null;
+  captureName: string;
+  setCapture: (capture: McvoxCapture | null, name?: string) => void;
+  captureMagnification: number;
+  setCaptureMagnification: (magnification: number) => void;
+  captureInterior: CaptureInterior;
+  setCaptureInterior: (interior: CaptureInterior) => void;
+  /** Block id (without namespace) used to fill hidden interior voxels. */
+  captureFiller: string;
+  setCaptureFiller: (id: string) => void;
 
   exportName: string;
   setExportName: (name: string) => void;
@@ -99,6 +113,16 @@ export const useStudio = create<StudioState>((set) => ({
   selectBlock: (id) => set({ selectedBlockId: id }),
   magnification: 3,
   setMagnification: (magnification) => set({ magnification }),
+
+  capture: null,
+  captureName: "",
+  setCapture: (capture, name) => set({ capture, captureName: name ?? "" }),
+  captureMagnification: 2,
+  setCaptureMagnification: (captureMagnification) => set({ captureMagnification }),
+  captureInterior: "hollow",
+  setCaptureInterior: (captureInterior) => set({ captureInterior }),
+  captureFiller: "stone",
+  setCaptureFiller: (captureFiller) => set({ captureFiller }),
 
   exportName: "pixel-art",
   setExportName: (exportName) => set({ exportName }),

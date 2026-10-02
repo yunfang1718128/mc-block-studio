@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { BLOCKS, textureUrl } from "@/lib/blocks";
+import { BLOCKS, BLOCKS_BY_ID, textureUrl } from "@/lib/blocks";
 import { FACE_DIRS, type BlockInfo, type FaceDir } from "@/lib/blocks/types";
 import { buildPalette, matchGrid } from "@/lib/color/match";
+import { buildCaptureModel } from "@/lib/voxel/from-capture";
 import {
   analyzeComplexity,
   sampleImage,
@@ -11,7 +12,7 @@ import {
 import { cropImageSource } from "@/lib/imaging/crop";
 import { loadImageSource } from "@/lib/imaging/load";
 import { buildBlockReplica, type ReplicaTextures } from "@/lib/voxel/from-block";
-import { buildFlatImage, previewFaceFor } from "@/lib/voxel/from-image";
+import { buildFlatImage, previewFaceFor, toBlockState } from "@/lib/voxel/from-image";
 import { buildReplicaFaceMap, type ReplicaFaceMap } from "@/lib/voxel/replica-map";
 import type { VoxelModel } from "@/lib/voxel/model";
 import { useStudio } from "./store";
@@ -28,6 +29,8 @@ export interface Generation {
   textures: ReplicaTextures | null;
   /** Six-face matched grids for the cube-net preview (block mode). */
   blockMap: ReplicaFaceMap | null;
+  /** Human-readable generation error, if the current input could not be built. */
+  error: string | null;
 }
 
 const EMPTY: Generation = {
@@ -39,6 +42,7 @@ const EMPTY: Generation = {
   report: null,
   textures: null,
   blockMap: null,
+  error: null,
 };
 
 /** Load the six face textures for the chosen source block. */
@@ -115,6 +119,10 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
   const size = useStudio((s) => s.size);
   const selectedBlockId = useStudio((s) => s.selectedBlockId);
   const magnification = useStudio((s) => s.magnification);
+  const capture = useStudio((s) => s.capture);
+  const captureMagnification = useStudio((s) => s.captureMagnification);
+  const captureInterior = useStudio((s) => s.captureInterior);
+  const captureFiller = useStudio((s) => s.captureFiller);
 
   const textures = useReplicaTextures(mode === "block" ? selectedBlockId : null);
 
@@ -153,6 +161,7 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
       report,
       textures: null,
       blockMap: null,
+      error: null,
     };
   }, [mode, cropped, size, resolvedAlgorithm, palette, orientation, thickness, report]);
 
@@ -167,10 +176,36 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
       report: null,
       textures,
       blockMap: buildReplicaFaceMap(textures, palette),
+      error: null,
     };
   }, [mode, textures, palette, magnification]);
 
-  const generation = mode === "image" ? image : block;
+  const mob = useMemo<Generation>(() => {
+    if (mode !== "mob" || !capture) return EMPTY;
+    const fillerBlock = BLOCKS_BY_ID.get(captureFiller);
+    const filler = fillerBlock ? toBlockState(fillerBlock) : null;
+    try {
+      return {
+        model: buildCaptureModel(capture, palette, {
+          magnification: captureMagnification,
+          interior: captureInterior,
+          filler,
+        }),
+        preview: null,
+        previewWidth: 0,
+        previewHeight: 0,
+        previewFace: "south",
+        report: null,
+        textures: null,
+        blockMap: null,
+        error: null,
+      };
+    } catch (err) {
+      return { ...EMPTY, error: err instanceof Error ? err.message : "生成失败" };
+    }
+  }, [mode, capture, captureMagnification, captureInterior, captureFiller, palette]);
+
+  const generation = mode === "image" ? image : mode === "block" ? block : mob;
   const value = useMemo<GenerationContextValue>(() => ({ generation, report }), [generation, report]);
 
   return <GenerationContext.Provider value={value}>{children}</GenerationContext.Provider>;

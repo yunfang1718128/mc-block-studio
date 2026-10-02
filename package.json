@@ -1,7 +1,7 @@
 {
   "name": "mc-block-studio",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.2.0",
   "type": "module",
   "license": "GPL-2.0-only",
   "packageManager": "pnpm@12.3.4",
@@ -14,6 +14,8 @@
     "test:watch": "vitest",
     "fetch:blocks": "node scripts/fetch-textures.mjs",
     "build:blocks": "node scripts/build-block-data.mjs",
+    "sample:capture": "node scripts/make-sample-capture.mjs",
+    "build:mobs": "node scripts/build-mob-library.mjs",
     "tauri": "tauri",
     "desktop:dev": "tauri dev",
     "desktop:build": "tauri build"

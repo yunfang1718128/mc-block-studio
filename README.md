@@ -1,6 +1,6 @@
 # MC Block Studio
 
-把**图片**或**任意原版方块**转换成 Minecraft 像素画（体素建筑），提供 2D 方块展开图与 3D 预览，并导出 `.litematic` 投影文件。
+把**图片**、**任意原版方块**或**生物体素**转换成 Minecraft 像素画（体素建筑），提供 2D 方块展开图与 3D 预览，并导出 `.litematic` 投影文件。
 
 ![MC Block Studio 主界面](./docs/images/hero.webp)
 
@@ -20,6 +20,12 @@
 
 ![方块 3D 复刻](./docs/images/tab-block.webp)
 
+### 导入生物 → 3D 体素
+
+导入由 [**Entity Capture**](https://github.com/yunfang1718128/entity-capture) 模组导出的 `.mcvox` 生物捕获包（已内置 **82 种原版生物**，可搜索 / 按分类筛选），点击即渲染 3D 预览；可调放大倍率、空心/填充，匹配方块后导出。
+
+![导入生物并生成 3D 体素](./docs/images/tab-mob.webp)
+
 ### 导出投影
 
 一键导出 `.litematic` 投影文件，放进存档即可用投影模组放置。
@@ -29,7 +35,17 @@
 ## 下载 / 在线使用
 
 - 网页版：<https://yunfang1718128.github.io/mc-block-studio/>
-- Windows 桌面版（免费）：[Gitee Releases](https://gitee.com/yunfan1718128/mc-block-studio/releases/download/v0.1.1/MC.Block.Studio_0.1.1_x64-setup.exe)（国内高速） · [GitHub Releases](https://github.com/yunfang1718128/mc-block-studio/releases)
+- Windows 桌面版（免费）：[Gitee Releases](https://gitee.com/yunfan1718128/mc-block-studio/releases/download/v0.2.0/MC.Block.Studio_0.2.0_x64-setup.exe)（国内高速） · [GitHub Releases](https://github.com/yunfang1718128/mc-block-studio/releases)
+
+## 配套项目
+
+生物体素来自姊妹项目 **[Entity Capture](https://github.com/yunfang1718128/entity-capture)**——一个 Fabric 客户端模组，在游戏内把任意实体（含模组生物）按 1:1 原生分辨率捕获为 `.mcvox` 文件（带搜索 / 分类筛选 / 多选批量捕获）。两个项目仅通过 `.mcvox` 这一份格式耦合：
+
+```
+[Entity Capture 模组] 游戏内捕获  →  .mcvox  →  本工具：放大 → 空心/填充 → 匹配方块 → 导出 .litematic
+```
+
+- 仓库：<https://github.com/yunfang1718128/entity-capture>
 
 ## 技术栈
 
