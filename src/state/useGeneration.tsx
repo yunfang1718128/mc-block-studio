@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { BLOCKS, BLOCKS_BY_ID, textureUrl } from "@/lib/blocks";
 import { FACE_DIRS, type BlockInfo, type FaceDir } from "@/lib/blocks/types";
 import { buildPalette, matchGrid } from "@/lib/color/match";
-import { buildCaptureModel } from "@/lib/voxel/from-capture";
+import { buildCapture } from "@/lib/voxel/from-capture";
 import {
   analyzeComplexity,
   sampleImage,
@@ -17,6 +17,14 @@ import { buildReplicaFaceMap, type ReplicaFaceMap } from "@/lib/voxel/replica-ma
 import type { VoxelModel } from "@/lib/voxel/model";
 import { useStudio } from "./store";
 
+/** Layout details for a built mob capture (`null` outside mob mode). */
+export interface CaptureInfo {
+  /** Integer downsampling factor applied to the native capture (1 = none). */
+  downsample: number;
+  nativeSize: [number, number, number];
+  effectiveSize: [number, number, number];
+}
+
 export interface Generation {
   model: VoxelModel | null;
   /** Matched blocks for the flat 2D preview, row-major (image mode). */
@@ -29,6 +37,8 @@ export interface Generation {
   textures: ReplicaTextures | null;
   /** Six-face matched grids for the cube-net preview (block mode). */
   blockMap: ReplicaFaceMap | null;
+  /** Mob capture layout, including any forced downsampling. */
+  captureInfo: CaptureInfo | null;
   /** Human-readable generation error, if the current input could not be built. */
   error: string | null;
 }
@@ -42,6 +52,7 @@ const EMPTY: Generation = {
   report: null,
   textures: null,
   blockMap: null,
+  captureInfo: null,
   error: null,
 };
 
@@ -161,6 +172,7 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
       report,
       textures: null,
       blockMap: null,
+      captureInfo: null,
       error: null,
     };
   }, [mode, cropped, size, resolvedAlgorithm, palette, orientation, thickness, report]);
@@ -176,6 +188,7 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
       report: null,
       textures,
       blockMap: buildReplicaFaceMap(textures, palette),
+      captureInfo: null,
       error: null,
     };
   }, [mode, textures, palette, magnification]);
@@ -185,12 +198,13 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
     const fillerBlock = BLOCKS_BY_ID.get(captureFiller);
     const filler = fillerBlock ? toBlockState(fillerBlock) : null;
     try {
+      const built = buildCapture(capture, palette, {
+        magnification: captureMagnification,
+        interior: captureInterior,
+        filler,
+      });
       return {
-        model: buildCaptureModel(capture, palette, {
-          magnification: captureMagnification,
-          interior: captureInterior,
-          filler,
-        }),
+        model: built.model,
         preview: null,
         previewWidth: 0,
         previewHeight: 0,
@@ -198,6 +212,11 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
         report: null,
         textures: null,
         blockMap: null,
+        captureInfo: {
+          downsample: built.downsample,
+          nativeSize: built.nativeSize,
+          effectiveSize: built.effectiveSize,
+        },
         error: null,
       };
     } catch (err) {

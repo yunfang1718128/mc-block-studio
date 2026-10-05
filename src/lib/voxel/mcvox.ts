@@ -96,6 +96,73 @@ export function surfaceColor(capture: McvoxCapture, x: number, y: number, z: num
   return [capture.colors[i], capture.colors[i + 1], capture.colors[i + 2]];
 }
 
+/**
+ * Reduce a capture's resolution by an integer factor: each output voxel covers
+ * a `factor × factor × factor` block of source voxels. A block is occupied when
+ * any source voxel in it is occupied, and its colour is the first
+ * non-transparent source colour found. The header dimensions are updated.
+ */
+export function downsampleCapture(capture: McvoxCapture, factor: number): McvoxCapture {
+  const d = Math.max(1, Math.floor(factor));
+  if (d <= 1) return capture;
+
+  const sizeX = Math.ceil(capture.sizeX / d);
+  const sizeY = Math.ceil(capture.sizeY / d);
+  const sizeZ = Math.ceil(capture.sizeZ / d);
+  const count = sizeX * sizeY * sizeZ;
+  const occupancy = new Uint8Array(Math.ceil(count / 8));
+  const colors = new Uint8Array(count * 4);
+
+  for (let oy = 0; oy < sizeY; oy++) {
+    for (let oz = 0; oz < sizeZ; oz++) {
+      for (let ox = 0; ox < sizeX; ox++) {
+        let occupied = false;
+        let color: [number, number, number] | null = null;
+        const yEnd = Math.min((oy + 1) * d, capture.sizeY);
+        const zEnd = Math.min((oz + 1) * d, capture.sizeZ);
+        const xEnd = Math.min((ox + 1) * d, capture.sizeX);
+
+        for (let y = oy * d; y < yEnd && (!occupied || !color); y++) {
+          for (let z = oz * d; z < zEnd && (!occupied || !color); z++) {
+            for (let x = ox * d; x < xEnd; x++) {
+              const si = captureIndex(capture, x, y, z);
+              if (!occupied && (capture.occupancy[si >> 3] & (1 << (si & 7))) !== 0) {
+                occupied = true;
+              }
+              if (!color) {
+                const ci = si * 4;
+                if (capture.colors[ci + 3] !== 0) {
+                  color = [capture.colors[ci], capture.colors[ci + 1], capture.colors[ci + 2]];
+                }
+              }
+              if (occupied && color) break;
+            }
+          }
+        }
+
+        const oi = ox + oz * sizeX + oy * sizeX * sizeZ;
+        if (occupied) occupancy[oi >> 3] |= 1 << (oi & 7);
+        if (color) {
+          const ci = oi * 4;
+          colors[ci] = color[0];
+          colors[ci + 1] = color[1];
+          colors[ci + 2] = color[2];
+          colors[ci + 3] = 255;
+        }
+      }
+    }
+  }
+
+  return {
+    header: { ...capture.header, dimensions: [sizeX, sizeY, sizeZ] },
+    sizeX,
+    sizeY,
+    sizeZ,
+    occupancy,
+    colors,
+  };
+}
+
 function validDimensions(header: McvoxHeader): [number, number, number] {
   const dims = header?.dimensions;
   if (!Array.isArray(dims) || dims.length !== 3) {

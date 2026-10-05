@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { BlockInfo } from "../blocks/types";
 import { buildPalette } from "../color/match";
-import { buildCaptureModel } from "./from-capture";
+import { buildCapture, buildCaptureModel, planCapture } from "./from-capture";
 import { getVoxel, nonAirCount } from "./model";
-import type { McvoxCapture } from "./mcvox";
+import { downsampleCapture, isOccupied, surfaceColor, type McvoxCapture } from "./mcvox";
 
 function block(id: string, rgb: [number, number, number]): BlockInfo {
   return {
@@ -113,5 +113,37 @@ describe("buildCaptureModel", () => {
     expect(() =>
       buildCaptureModel(single(), palette, { magnification: 5000, interior: "hollow" })
     ).toThrow(/体素过多/);
+  });
+
+  it("reports the layout without downsampling when the capture fits", () => {
+    const built = buildCapture(single(), palette, { magnification: 1, interior: "hollow" });
+    expect(built.downsample).toBe(1);
+    expect(getVoxel(built.model, 0, 0, 0).name).toBe("minecraft:red");
+  });
+});
+
+describe("planCapture", () => {
+  it("downsamples an oversized capture until it fits the budget", () => {
+    const big = capture(8, 8, 8, () => ({ occupied: true, color: [255, 0, 0] }));
+    const plan = planCapture(big, 1, 100);
+    expect(plan.downsample).toBe(2);
+    expect(plan.effectiveSize).toEqual([4, 4, 4]);
+    expect(plan.volume).toBe(64);
+  });
+
+  it("throws when even a 1×1×1 capture cannot fit", () => {
+    expect(() => planCapture(single(), 5000)).toThrow(/体素过多/);
+  });
+});
+
+describe("downsampleCapture", () => {
+  it("collapses a block that has any occupied voxel", () => {
+    const src = capture(2, 2, 2, (x, y, z) =>
+      x === 1 && y === 1 && z === 1 ? { occupied: true, color: [0, 0, 255] } : { occupied: false }
+    );
+    const out = downsampleCapture(src, 2);
+    expect([out.sizeX, out.sizeY, out.sizeZ]).toEqual([1, 1, 1]);
+    expect(isOccupied(out, 0, 0, 0)).toBe(true);
+    expect(surfaceColor(out, 0, 0, 0)).toEqual([0, 0, 255]);
   });
 });

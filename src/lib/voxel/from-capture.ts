@@ -1,6 +1,6 @@
 import { matchColor, type PaletteEntry } from "../color/match";
 import { toBlockState } from "./from-image";
-import { isOccupied, surfaceColor, type McvoxCapture } from "./mcvox";
+import { downsampleCapture, isOccupied, surfaceColor, type McvoxCapture } from "./mcvox";
 import { AIR, createVoxelModel, setVoxel, type BlockState, type VoxelModel } from "./model";
 
 export type CaptureInterior = "hollow" | "fill";
@@ -8,9 +8,14 @@ export type CaptureInterior = "hollow" | "fill";
 /**
  * Hard cap on the expanded grid so an accidentally huge capture (or a large
  * magnification) cannot exhaust memory. `Uint32Array` of this many entries is
- * roughly 48 MB.
+ * roughly 128 MB.
+ *
+ * The grid spans the whole bounding box, which for entity captures is mostly
+ * air (e.g. a 400×136×234 dragon holds only ~85k real voxels). Captures whose
+ * bounding box exceeds this are automatically downsampled instead of rejected,
+ * so a preview is always possible.
  */
-export const MAX_CAPTURE_VOXELS = 12_000_000;
+export const MAX_CAPTURE_VOXELS = 32_000_000;
 
 export interface CaptureOptions {
   /** How many blocks each native voxel becomes (N³ expansion). */
@@ -30,6 +35,66 @@ export function captureBounds(
   return { sizeX: capture.sizeX * n, sizeY: capture.sizeY * n, sizeZ: capture.sizeZ * n };
 }
 
+/** How a capture will be laid out once expanded (before any downsampling). */
+export interface CapturePlan {
+  /** Applied magnification (integer, at least 1). */
+  magnification: number;
+  /** Integer downsampling factor applied to the native capture (1 = none). */
+  downsample: number;
+  /** Original capture dimensions. */
+  nativeSize: [number, number, number];
+  /** Native dimensions after downsampling. */
+  effectiveSize: [number, number, number];
+  /** Final model dimensions. */
+  modelSize: [number, number, number];
+  /** Final volume (`modelSize` product). */
+  volume: number;
+}
+
+/**
+ * Choose the smallest integer downsampling factor such that the expanded grid
+ * fits within `limit`. Only throws when even a 1×1×1 capture cannot be reduced
+ * any further (i.e. the magnification alone exceeds the budget).
+ */
+export function planCapture(
+  capture: McvoxCapture,
+  magnification: number,
+  limit: number = MAX_CAPTURE_VOXELS
+): CapturePlan {
+  const n = Math.max(1, Math.floor(magnification));
+  const nativeSize: [number, number, number] = [capture.sizeX, capture.sizeY, capture.sizeZ];
+
+  for (let d = 1; ; d++) {
+    const ex = Math.ceil(capture.sizeX / d);
+    const ey = Math.ceil(capture.sizeY / d);
+    const ez = Math.ceil(capture.sizeZ / d);
+    const volume = ex * ey * ez * n * n * n;
+    if (volume <= limit) {
+      return {
+        magnification: n,
+        downsample: d,
+        nativeSize,
+        effectiveSize: [ex, ey, ez],
+        modelSize: [ex * n, ey * n, ez * n],
+        volume,
+      };
+    }
+    // Once the capture is down to a single voxel, no factor can shrink it more.
+    if (ex === 1 && ey === 1 && ez === 1) {
+      throw new RangeError(`捕获体素过多（${volume}），请降低放大倍率`);
+    }
+  }
+}
+
+/** A built capture model plus the layout decisions made to keep it affordable. */
+export interface CaptureBuild {
+  model: VoxelModel;
+  /** Integer downsampling factor applied to the native capture (1 = none). */
+  downsample: number;
+  nativeSize: [number, number, number];
+  effectiveSize: [number, number, number];
+}
+
 /**
  * Turn a native-resolution `.mcvox` capture into a voxel model:
  *
@@ -38,19 +103,41 @@ export function captureBounds(
  *    magnification.
  * 3. Hidden interior voxels become a filler block (`fill`) or stay air
  *    (`hollow`).
+ *
+ * Oversized captures are downsampled rather than rejected so they can always be
+ * previewed; `downsample` reports the applied factor.
  */
+export function buildCapture(
+  capture: McvoxCapture,
+  palette: readonly PaletteEntry[],
+  options: CaptureOptions
+): CaptureBuild {
+  const plan = planCapture(capture, options.magnification);
+  const source = plan.downsample > 1 ? downsampleCapture(capture, plan.downsample) : capture;
+  return {
+    model: expandCapture(source, palette, plan.magnification, options),
+    downsample: plan.downsample,
+    nativeSize: plan.nativeSize,
+    effectiveSize: plan.effectiveSize,
+  };
+}
+
+/** Backwards-compatible wrapper returning just the model. */
 export function buildCaptureModel(
   capture: McvoxCapture,
   palette: readonly PaletteEntry[],
   options: CaptureOptions
 ): VoxelModel {
-  const n = Math.max(1, Math.floor(options.magnification));
-  const { sizeX, sizeY, sizeZ } = captureBounds(capture, n);
-  const volume = sizeX * sizeY * sizeZ;
-  if (volume > MAX_CAPTURE_VOXELS) {
-    throw new RangeError(`捕获体素过多（${volume}），请降低放大倍率`);
-  }
+  return buildCapture(capture, palette, options).model;
+}
 
+function expandCapture(
+  capture: McvoxCapture,
+  palette: readonly PaletteEntry[],
+  n: number,
+  options: CaptureOptions
+): VoxelModel {
+  const { sizeX, sizeY, sizeZ } = captureBounds(capture, n);
   const model = createVoxelModel(sizeX, sizeY, sizeZ);
   const filler = options.interior === "fill" ? (options.filler ?? null) : null;
   const cache = new Map<number, BlockState | null>();

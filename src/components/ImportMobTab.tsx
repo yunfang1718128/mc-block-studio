@@ -34,7 +34,7 @@ export function ImportMobTab() {
   const setInterior = useStudio((s) => s.setCaptureInterior);
   const filler = useStudio((s) => s.captureFiller);
   const setFiller = useStudio((s) => s.setCaptureFiller);
-  const { model, error } = useGeneration();
+  const { model, error, captureInfo } = useGeneration();
 
   const [source, setSource] = useState<Source>("builtin");
   const [query, setQuery] = useState("");
@@ -261,7 +261,7 @@ export function ImportMobTab() {
             </div>
           )}
 
-          <div className="rounded-md bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+          <div className="flex flex-col gap-1 rounded-md bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
             {model ? (
               <>
                 <p>
@@ -273,6 +273,12 @@ export function ImportMobTab() {
                 <p>
                   共 <span className="font-medium text-foreground">{total}</span> 个方块
                 </p>
+                {captureInfo && captureInfo.downsample > 1 && (
+                  <p className="text-amber-600 dark:text-amber-500">
+                    体素过多，已按 1/{captureInfo.downsample} 分辨率预览（原始{" "}
+                    {captureInfo.nativeSize.join("×")} → {captureInfo.effectiveSize.join("×")}）
+                  </p>
+                )}
               </>
             ) : (
               <p className="text-destructive">{error ?? "无法生成"}</p>
