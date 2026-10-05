@@ -1,6 +1,12 @@
 import { matchColor, type PaletteEntry } from "../color/match";
 import { toBlockState } from "./from-image";
-import { downsampleCapture, isOccupied, surfaceColor, type McvoxCapture } from "./mcvox";
+import {
+  captureIndex,
+  downsampleCapture,
+  isOccupied,
+  surfaceColor,
+  type McvoxCapture,
+} from "./mcvox";
 import { AIR, createVoxelModel, setVoxel, type BlockState, type VoxelModel } from "./model";
 
 export type CaptureInterior = "hollow" | "fill";
@@ -22,6 +28,12 @@ export interface CaptureOptions {
   magnification: number;
   /** `hollow` keeps only the textured shell; `fill` also fills hidden interior. */
   interior: CaptureInterior;
+  /**
+   * Drop surface-coloured voxels that have no face exposed to the outside.
+   * Captures paint internal faces too, so without this a mob keeps every
+   * invisible block of its interior (default on).
+   */
+  cull?: boolean;
   /** Filler block used for interior voxels when `interior === "fill"`. */
   filler?: BlockState | null;
 }
@@ -140,24 +152,37 @@ function expandCapture(
   const { sizeX, sizeY, sizeZ } = captureBounds(capture, n);
   const model = createVoxelModel(sizeX, sizeY, sizeZ);
   const filler = options.interior === "fill" ? (options.filler ?? null) : null;
+  const cull = options.cull ?? true;
+  // The outside map is only needed to test visibility (cull) or to spot sealed
+  // cavities (fill); with both off the naive shell is emitted unchanged.
+  const outside = cull || filler ? computeOutside(capture) : new Uint8Array(0);
   const cache = new Map<number, BlockState | null>();
+
+  const blockForColor = (color: [number, number, number]): BlockState | null => {
+    const key = (color[0] << 16) | (color[1] << 8) | color[2];
+    if (!cache.has(key)) {
+      const block = matchColor(color, palette);
+      cache.set(key, block ? toBlockState(block) : null);
+    }
+    return cache.get(key)!;
+  };
 
   for (let y = 0; y < capture.sizeY; y++) {
     for (let z = 0; z < capture.sizeZ; z++) {
       for (let x = 0; x < capture.sizeX; x++) {
-        const color = surfaceColor(capture, x, y, z);
         let state: BlockState | null = null;
 
-        if (color) {
-          const key = (color[0] << 16) | (color[1] << 8) | color[2];
-          if (cache.has(key)) {
-            state = cache.get(key)!;
-          } else {
-            const block = matchColor(color, palette);
-            state = block ? toBlockState(block) : null;
-            cache.set(key, state);
+        if (isOccupied(capture, x, y, z)) {
+          const color = surfaceColor(capture, x, y, z);
+          if (color && (!cull || hasExposedFace(capture, outside, x, y, z))) {
+            state = blockForColor(color);
+          } else if (filler) {
+            // Hidden surface paint (culled) or an unpainted interior voxel:
+            // `fill` replaces it with the filler block.
+            state = filler;
           }
-        } else if (filler && isOccupied(capture, x, y, z)) {
+        } else if (filler && outside[captureIndex(capture, x, y, z)] === 0) {
+          // Empty but sealed off from the outside: part of the solid interior.
           state = filler;
         }
 
@@ -180,4 +205,92 @@ function expandCapture(
   // Guarantee the air entry exists for the encoder.
   if (!model.palette.includes(AIR)) model.palette.push(AIR);
   return model;
+}
+
+/**
+ * Mark every empty voxel reachable from outside the grid (6-connectivity) in a
+ * byte per voxel. A voxel left at 0 is either occupied or sealed inside the
+ * model's shell, which is exactly what separates visible surface from hidden
+ * interior.
+ */
+function computeOutside(capture: McvoxCapture): Uint8Array {
+  const { sizeX, sizeY, sizeZ } = capture;
+  const outside = new Uint8Array(sizeX * sizeY * sizeZ);
+  const stack: number[] = [];
+
+  const seed = (x: number, y: number, z: number) => {
+    const i = captureIndex(capture, x, y, z);
+    if (outside[i] === 0 && !isOccupied(capture, x, y, z)) {
+      outside[i] = 1;
+      stack.push(i);
+    }
+  };
+
+  for (let y = 0; y < sizeY; y++) {
+    for (let x = 0; x < sizeX; x++) {
+      seed(x, y, 0);
+      seed(x, y, sizeZ - 1);
+    }
+  }
+  for (let z = 0; z < sizeZ; z++) {
+    for (let x = 0; x < sizeX; x++) {
+      seed(x, 0, z);
+      seed(x, sizeY - 1, z);
+    }
+  }
+  for (let z = 0; z < sizeZ; z++) {
+    for (let y = 0; y < sizeY; y++) {
+      seed(0, y, z);
+      seed(sizeX - 1, y, z);
+    }
+  }
+
+  const visit = (x: number, y: number, z: number) => {
+    if (x < 0 || y < 0 || z < 0 || x >= sizeX || y >= sizeY || z >= sizeZ) return;
+    const i = captureIndex(capture, x, y, z);
+    if (outside[i] === 0 && !isOccupied(capture, x, y, z)) {
+      outside[i] = 1;
+      stack.push(i);
+    }
+  };
+
+  while (stack.length > 0) {
+    const i = stack.pop()!;
+    const x = i % sizeX;
+    const yz = (i / sizeX) | 0;
+    const z = yz % sizeZ;
+    const y = (yz / sizeZ) | 0;
+    visit(x + 1, y, z);
+    visit(x - 1, y, z);
+    visit(x, y + 1, z);
+    visit(x, y - 1, z);
+    visit(x, y, z + 1);
+    visit(x, y, z - 1);
+  }
+
+  return outside;
+}
+
+/** True when an occupied voxel has at least one face open to the outside. */
+function hasExposedFace(
+  capture: McvoxCapture,
+  outside: Uint8Array,
+  x: number,
+  y: number,
+  z: number
+): boolean {
+  const open = (px: number, py: number, pz: number): boolean => {
+    if (px < 0 || py < 0 || pz < 0 || px >= capture.sizeX || py >= capture.sizeY || pz >= capture.sizeZ) {
+      return true;
+    }
+    return outside[captureIndex(capture, px, py, pz)] === 1;
+  };
+  return (
+    open(x + 1, y, z) ||
+    open(x - 1, y, z) ||
+    open(x, y + 1, z) ||
+    open(x, y - 1, z) ||
+    open(x, y, z + 1) ||
+    open(x, y, z - 1)
+  );
 }

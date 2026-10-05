@@ -133,6 +133,7 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
   const capture = useStudio((s) => s.capture);
   const captureMagnification = useStudio((s) => s.captureMagnification);
   const captureInterior = useStudio((s) => s.captureInterior);
+  const captureCull = useStudio((s) => s.captureCull);
   const captureFiller = useStudio((s) => s.captureFiller);
 
   const textures = useReplicaTextures(mode === "block" ? selectedBlockId : null);
@@ -201,6 +202,7 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
       const built = buildCapture(capture, palette, {
         magnification: captureMagnification,
         interior: captureInterior,
+        cull: captureCull,
         filler,
       });
       return {
@@ -222,7 +224,7 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       return { ...EMPTY, error: err instanceof Error ? err.message : "生成失败" };
     }
-  }, [mode, capture, captureMagnification, captureInterior, captureFiller, palette]);
+  }, [mode, capture, captureMagnification, captureInterior, captureCull, captureFiller, palette]);
 
   const generation = mode === "image" ? image : mode === "block" ? block : mob;
   const value = useMemo<GenerationContextValue>(() => ({ generation, report }), [generation, report]);

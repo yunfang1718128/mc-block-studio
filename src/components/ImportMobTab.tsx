@@ -9,6 +9,7 @@ import { useStudio } from "@/state/store";
 import { useGeneration } from "@/state/useGeneration";
 import { useDebouncedValue } from "@/state/useDebouncedValue";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -32,6 +33,8 @@ export function ImportMobTab() {
   const setMagnification = useStudio((s) => s.setCaptureMagnification);
   const interior = useStudio((s) => s.captureInterior);
   const setInterior = useStudio((s) => s.setCaptureInterior);
+  const cull = useStudio((s) => s.captureCull);
+  const setCull = useStudio((s) => s.setCaptureCull);
   const filler = useStudio((s) => s.captureFiller);
   const setFiller = useStudio((s) => s.setCaptureFiller);
   const { model, error, captureInfo } = useGeneration();
@@ -241,6 +244,10 @@ export function ImportMobTab() {
                 填充
               </Button>
             </div>
+            <label className="flex cursor-pointer items-center gap-2 text-sm">
+              <Checkbox checked={cull} onCheckedChange={(checked) => setCull(checked === true)} />
+              剔除内部不可见方块
+            </label>
           </div>
 
           {interior === "fill" && (

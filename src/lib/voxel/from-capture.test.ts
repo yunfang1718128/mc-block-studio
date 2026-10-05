@@ -109,6 +109,37 @@ describe("buildCaptureModel", () => {
     expect(getVoxel(model, 1, 1, 1).name).toBe("minecraft:blue");
   });
 
+  it("culls hidden surface-coloured voxels by default", () => {
+    // Real captures paint internal faces too, so every voxel of this cube
+    // carries a colour even though only the 26 shell voxels are visible.
+    const solid = capture(3, 3, 3, () => ({ occupied: true, color: [255, 0, 0] }));
+    const model = buildCaptureModel(solid, palette, { magnification: 1, interior: "hollow" });
+    expect(nonAirCount(model)).toBe(26);
+    expect(getVoxel(model, 1, 1, 1).name).toBe("minecraft:air");
+  });
+
+  it("keeps hidden surface-coloured voxels when culling is off", () => {
+    const solid = capture(3, 3, 3, () => ({ occupied: true, color: [255, 0, 0] }));
+    const model = buildCaptureModel(solid, palette, {
+      magnification: 1,
+      interior: "hollow",
+      cull: false,
+    });
+    expect(nonAirCount(model)).toBe(27);
+    expect(getVoxel(model, 1, 1, 1).name).toBe("minecraft:red");
+  });
+
+  it("fills a solid interior with the filler when asked", () => {
+    const solid = capture(3, 3, 3, () => ({ occupied: true, color: [255, 0, 0] }));
+    const model = buildCaptureModel(solid, palette, {
+      magnification: 1,
+      interior: "fill",
+      filler: { name: "minecraft:blue" },
+    });
+    expect(nonAirCount(model)).toBe(27);
+    expect(getVoxel(model, 1, 1, 1).name).toBe("minecraft:blue");
+  });
+
   it("rejects an over-large expansion", () => {
     expect(() =>
       buildCaptureModel(single(), palette, { magnification: 5000, interior: "hollow" })

@@ -52,6 +52,9 @@ interface StudioState {
   setCaptureMagnification: (magnification: number) => void;
   captureInterior: CaptureInterior;
   setCaptureInterior: (interior: CaptureInterior) => void;
+  /** Drop surface-coloured voxels that are not visible from outside (default on). */
+  captureCull: boolean;
+  setCaptureCull: (cull: boolean) => void;
   /** Block id (without namespace) used to fill hidden interior voxels. */
   captureFiller: string;
   setCaptureFiller: (id: string) => void;
@@ -121,6 +124,8 @@ export const useStudio = create<StudioState>((set) => ({
   setCaptureMagnification: (captureMagnification) => set({ captureMagnification }),
   captureInterior: "hollow",
   setCaptureInterior: (captureInterior) => set({ captureInterior }),
+  captureCull: true,
+  setCaptureCull: (captureCull) => set({ captureCull }),
   captureFiller: "stone",
   setCaptureFiller: (captureFiller) => set({ captureFiller }),
 
