@@ -7,6 +7,7 @@ import type { FaceDir } from "@/lib/blocks/types";
 import type { VoxelModel } from "@/lib/voxel/model";
 import { groupVoxelsByBlock, textureNamesForGroups, type VoxelGroup } from "@/lib/voxel/instances";
 import { useStudio } from "@/state/store";
+import { cn } from "@/lib/utils";
 import { MaterialsList } from "@/components/MaterialsList";
 
 /**
@@ -35,8 +36,18 @@ interface Handles {
   container: HTMLDivElement;
 }
 
+type SliceAxis = "x" | "y" | "z";
+type SliceDirection = "below" | "above";
+
+/** Size of the model along a slice axis. */
+function axisSize(model: VoxelModel, axis: SliceAxis): number {
+  return axis === "x" ? model.sizeX : axis === "z" ? model.sizeZ : model.sizeY;
+}
+
 interface ViewState {
   layer: number;
+  axis: SliceAxis;
+  direction: SliceDirection;
   solo: boolean;
   explode: number;
   centerY: number;
@@ -116,10 +127,19 @@ export function Viewer3D({ model }: { model: VoxelModel }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const handlesRef = useRef<Handles | null>(null);
   const entriesRef = useRef<Entry[]>([]);
-  const viewRef = useRef<ViewState>({ layer: 0, solo: false, explode: 0, centerY: 0 });
+  const viewRef = useRef<ViewState>({
+    layer: 0,
+    axis: "y",
+    direction: "below",
+    solo: false,
+    explode: 0,
+    centerY: 0,
+  });
   const setPreviewCanvas = useStudio((s) => s.setPreviewCanvas);
 
   const [layer, setLayer] = useState(model.sizeY - 1);
+  const [axis, setAxis] = useState<SliceAxis>("y");
+  const [direction, setDirection] = useState<SliceDirection>("below");
   const [solo, setSolo] = useState(false);
   const [explode, setExplode] = useState(0);
   const [hover, setHover] = useState<HoverInfo | null>(null);
@@ -127,7 +147,7 @@ export function Viewer3D({ model }: { model: VoxelModel }) {
   const [showMaterials, setShowMaterials] = useState(true);
 
   const applyTransforms = useCallback(() => {
-    const { layer: l, solo: s, explode: e, centerY } = viewRef.current;
+    const { layer: l, axis: ax, direction: dir, solo: s, explode: e, centerY } = viewRef.current;
     const matrix = new THREE.Matrix4();
     const quaternion = new THREE.Quaternion();
     const scale = new THREE.Vector3(1, 1, 1);
@@ -140,7 +160,8 @@ export function Viewer3D({ model }: { model: VoxelModel }) {
         const x = coords[i];
         const y = coords[i + 1];
         const z = coords[i + 2];
-        if (s ? y !== l : y > l) continue;
+        const coord = ax === "x" ? x : ax === "z" ? z : y;
+        if (s ? coord !== l : dir === "below" ? coord > l : coord < l) continue;
         position.set(x + 0.5, y + 0.5 + e * (y - centerY), z + 0.5);
         matrix.compose(position, quaternion, scale);
         entry.mesh.setMatrixAt(visible++, matrix);
@@ -290,11 +311,15 @@ export function Viewer3D({ model }: { model: VoxelModel }) {
 
     viewRef.current = {
       layer: model.sizeY - 1,
+      axis: "y",
+      direction: "below",
       solo: false,
       explode: 0,
       centerY: (model.sizeY - 1) / 2,
     };
     setLayer(model.sizeY - 1);
+    setAxis("y");
+    setDirection("below");
     setSolo(false);
     setExplode(0);
     frameCamera(handles, model);
@@ -321,10 +346,20 @@ export function Viewer3D({ model }: { model: VoxelModel }) {
 
   useEffect(() => {
     viewRef.current.layer = layer;
+    viewRef.current.axis = axis;
+    viewRef.current.direction = direction;
     viewRef.current.solo = solo;
     viewRef.current.explode = explode;
     applyTransforms();
-  }, [layer, solo, explode, applyTransforms]);
+  }, [layer, axis, direction, solo, explode, applyTransforms]);
+
+  const limit = axisSize(model, axis);
+  const shownLayer = Math.min(layer, Math.max(0, limit - 1));
+
+  const changeAxis = (next: SliceAxis) => {
+    setAxis(next);
+    setLayer(axisSize(model, next) - 1);
+  };
 
   return (
     <div className="relative h-full w-full overflow-hidden">
@@ -358,22 +393,65 @@ export function Viewer3D({ model }: { model: VoxelModel }) {
       )}
 
       <div className="absolute inset-x-3 bottom-3 flex flex-wrap items-center gap-4 rounded-md bg-white/90 px-3 py-2 text-xs shadow-xl ring-1 ring-gray-200 dark:bg-zinc-900/90 dark:ring-zinc-700">
-        <label className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
           <Layers className="size-3.5" />
-          <span>层</span>
+          <span>分层</span>
+          <div className="inline-flex overflow-hidden rounded-md ring-1 ring-gray-200 dark:ring-zinc-700">
+            {(["x", "y", "z"] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => changeAxis(value)}
+                className={cn(
+                  "px-2 py-0.5 font-medium uppercase transition-colors",
+                  axis === value
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-transparent text-muted-foreground hover:bg-accent"
+                )}
+              >
+                {value}
+              </button>
+            ))}
+          </div>
           <input
             type="range"
             min={0}
-            max={Math.max(0, model.sizeY - 1)}
-            value={layer}
-            disabled={model.sizeY <= 1}
+            max={Math.max(0, limit - 1)}
+            value={shownLayer}
+            disabled={limit <= 1}
             onChange={(event) => setLayer(Number(event.target.value))}
             className="w-28 accent-primary"
           />
           <span className="tabular-nums text-muted-foreground">
-            {layer + 1}/{model.sizeY}
+            {axis.toUpperCase()} {shownLayer + 1}/{limit}
           </span>
-        </label>
+        </div>
+        <div className="inline-flex overflow-hidden rounded-md ring-1 ring-gray-200 dark:ring-zinc-700">
+          <button
+            type="button"
+            onClick={() => setDirection("below")}
+            className={cn(
+              "px-2 py-0.5 font-medium transition-colors",
+              direction === "below"
+                ? "bg-primary text-primary-foreground"
+                : "bg-transparent text-muted-foreground hover:bg-accent"
+            )}
+          >
+            隐藏上半
+          </button>
+          <button
+            type="button"
+            onClick={() => setDirection("above")}
+            className={cn(
+              "px-2 py-0.5 font-medium transition-colors",
+              direction === "above"
+                ? "bg-primary text-primary-foreground"
+                : "bg-transparent text-muted-foreground hover:bg-accent"
+            )}
+          >
+            隐藏下半
+          </button>
+        </div>
         <label className="flex items-center gap-1.5">
           <input
             type="checkbox"
