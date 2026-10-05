@@ -23,30 +23,55 @@ export interface VoxelGroup extends BlockInfoWithName {
  */
 export function groupVoxelsByBlock(model: VoxelModel): VoxelGroup[] {
   const { sizeX, sizeY, sizeZ } = model;
-  const buckets = new Map<string, { block: BlockInfo; coords: number[] }>();
+
+  // First pass: count voxels per block type and remember first-seen order.
+  // Counting up front lets each group's Float32Array be allocated once, instead
+  // of buffering every coordinate in a temporary JS array first.
+  const counts = new Map<string, number>();
+  const blocks = new Map<string, BlockInfo>();
+  const order: string[] = [];
 
   for (let y = 0; y < sizeY; y++) {
     for (let z = 0; z < sizeZ; z++) {
       for (let x = 0; x < sizeX; x++) {
         const state = model.palette[model.indices[voxelIndex(sizeX, sizeZ, x, y, z)]];
         if (isAir(state)) continue;
-        let bucket = buckets.get(state.name);
-        if (!bucket) {
-          const block = blockForState(state.name);
-          if (!block) continue;
-          bucket = { block, coords: [] };
-          buckets.set(state.name, bucket);
+        const existing = counts.get(state.name);
+        if (existing !== undefined) {
+          counts.set(state.name, existing + 1);
+          continue;
         }
-        bucket.coords.push(x, y, z);
+        const block = blockForState(state.name);
+        if (!block) continue;
+        counts.set(state.name, 1);
+        blocks.set(state.name, block);
+        order.push(state.name);
       }
     }
   }
 
-  return [...buckets].map(([name, { block, coords }]) => ({
-    name,
-    block,
-    coords: Float32Array.from(coords),
-  }));
+  const coords = new Map<string, Float32Array>();
+  for (const name of order) coords.set(name, new Float32Array(counts.get(name)! * 3));
+  const cursors = new Map<string, number>();
+
+  // Second pass: fill the pre-sized arrays.
+  for (let y = 0; y < sizeY; y++) {
+    for (let z = 0; z < sizeZ; z++) {
+      for (let x = 0; x < sizeX; x++) {
+        const state = model.palette[model.indices[voxelIndex(sizeX, sizeZ, x, y, z)]];
+        if (isAir(state)) continue;
+        const buffer = coords.get(state.name);
+        if (!buffer) continue;
+        const cursor = cursors.get(state.name) ?? 0;
+        buffer[cursor] = x;
+        buffer[cursor + 1] = y;
+        buffer[cursor + 2] = z;
+        cursors.set(state.name, cursor + 3);
+      }
+    }
+  }
+
+  return order.map((name) => ({ name, block: blocks.get(name)!, coords: coords.get(name)! }));
 }
 
 /** Unique texture basenames referenced by a set of groups. */
