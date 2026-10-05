@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ExternalLink, FileUp, PawPrint } from "lucide-react";
-import { SOLID_BLOCKS } from "@/lib/blocks";
 import { parseMcvox } from "@/lib/voxel/mcvox";
 import { BUILTIN_MOBS, mobUrl, type BuiltinMob, type MobCategory } from "@/lib/voxel/builtin-mobs";
 import { nonAirCount } from "@/lib/voxel/model";
@@ -8,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { useStudio } from "@/state/store";
 import { useGeneration } from "@/state/useGeneration";
 import { useDebouncedValue } from "@/state/useDebouncedValue";
+import { FillerPicker } from "@/components/FillerPicker";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -252,19 +252,8 @@ export function ImportMobTab() {
 
           {interior === "fill" && (
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="capture-filler">填充方块</Label>
-              <select
-                id="capture-filler"
-                value={filler}
-                onChange={(e) => setFiller(e.target.value)}
-                className="h-9 rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                {SOLID_BLOCKS.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
+              <Label>填充方块</Label>
+              <FillerPicker value={filler} onChange={setFiller} />
             </div>
           )}
 
