@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { BLOCKS, SOLID_BLOCKS } from "@/lib/blocks";
+import { BLOCKS, SOLID_BLOCKS, ORIENTATION_SENSITIVE_IDS } from "@/lib/blocks";
 import type { CropRect } from "@/lib/imaging/crop";
 import type { SampleAlgorithm } from "@/lib/imaging/sample";
 import type { ImageSource } from "@/lib/imaging/sample";
@@ -16,6 +16,8 @@ interface StudioState {
   toggleBlock: (id: string) => void;
   setCategory: (category: string, enabled: boolean) => void;
   setAll: (enabled: boolean) => void;
+  /** Uncheck all orientation-sensitive blocks; every other selection is kept. */
+  filterOrientationSensitive: () => void;
 
   mode: Mode;
   setMode: (mode: Mode) => void;
@@ -90,6 +92,12 @@ export const useStudio = create<StudioState>((set) => ({
       return { allowed };
     }),
   setAll: (enabled) => set({ allowed: enabled ? new Set(SOLID_IDS) : new Set() }),
+  filterOrientationSensitive: () =>
+    set((state) => {
+      const allowed = new Set(state.allowed);
+      for (const id of ORIENTATION_SENSITIVE_IDS) allowed.delete(id);
+      return { allowed };
+    }),
 
   mode: "image",
   setMode: (mode) => set({ mode }),

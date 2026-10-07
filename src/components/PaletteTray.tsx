@@ -80,6 +80,8 @@ function CategoryGroup({
 export function PaletteTray() {
   const allowed = useStudio((s) => s.allowed);
   const setAll = useStudio((s) => s.setAll);
+  const mode = useStudio((s) => s.mode);
+  const filterOrientationSensitive = useStudio((s) => s.filterOrientationSensitive);
   const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
@@ -126,6 +128,21 @@ export function PaletteTray() {
             全不选
           </Button>
         </div>
+        {mode === "mob" && (
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              title="取消勾选六面贴图不一致的方块（原木、菌岩、草方块等），它们摆放时不会转向，容易露错面"
+              onClick={filterOrientationSensitive}
+            >
+              筛选不适合方块
+            </Button>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              生物模型摆放方块时不会自动转向，原木、草方块这类六面贴图不一致的方块容易露错面；点击可一次性取消勾选。
+            </p>
+          </>
+        )}
       </div>
       <Separator />
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
