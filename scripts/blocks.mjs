@@ -99,6 +99,7 @@ push("木板", [
   ["cherry_planks", "樱花木板", "cherry_planks"],
   ["mangrove_planks", "红树木板", "mangrove_planks"],
   ["pale_oak_planks", "苍白橡木木板", "pale_oak_planks"],
+  ["poplar_planks", "白杨木板", "poplar_planks"],
 ]);
 
 push("原木", [
@@ -111,7 +112,40 @@ push("原木", [
   ["cherry_log", "樱花原木", "cherry_log_side", "cherry_log_top"],
   ["mangrove_log", "红树原木", "mangrove_log_side", "mangrove_log_top"],
   ["pale_oak_log", "苍白橡木原木", "pale_oak_log_side", "pale_oak_log_top"],
+  ["poplar_log", "白杨原木", "poplar_log_side", "poplar_log_top"],
   ["bamboo_block", "竹块", "bamboo_block", "bamboo_block_top"],
+]);
+
+// Six-sided bark blocks: identical to a log's side texture on every face, so
+// they render correctly at any orientation. Listed after 原木 so logs win
+// exact colour-distance ties and existing image-mode output stays unchanged.
+push("木头", [
+  ["oak_wood", "橡木", "log_oak"],
+  ["spruce_wood", "云杉木", "log_spruce"],
+  ["birch_wood", "白桦木", "log_birch"],
+  ["jungle_wood", "丛林木", "log_jungle"],
+  ["acacia_wood", "金合欢木", "log_acacia"],
+  ["dark_oak_wood", "深色橡木", "log_big_oak"],
+  ["cherry_wood", "樱花木", "cherry_log_side"],
+  ["mangrove_wood", "红树木", "mangrove_log_side"],
+  ["pale_oak_wood", "苍白橡木", "pale_oak_log_side"],
+  ["poplar_wood", "白杨木", "poplar_log_side"],
+]);
+
+// Stripped "wood" blocks: unlike stripped logs (which keep ring textures on
+// top/bottom), these are smooth bark-stripped texture on all six faces, so they
+// are orientation-safe. They reuse the stripped-log side textures.
+push("去皮木头", [
+  ["stripped_oak_wood", "去皮橡木", "stripped_oak_log"],
+  ["stripped_spruce_wood", "去皮云杉木", "stripped_spruce_log"],
+  ["stripped_birch_wood", "去皮白桦木", "stripped_birch_log"],
+  ["stripped_jungle_wood", "去皮丛林木", "stripped_jungle_log"],
+  ["stripped_acacia_wood", "去皮金合欢木", "stripped_acacia_log"],
+  ["stripped_dark_oak_wood", "去皮深色橡木", "stripped_dark_oak_log"],
+  ["stripped_cherry_wood", "去皮樱花木", "stripped_cherry_log_side"],
+  ["stripped_mangrove_wood", "去皮红树木", "stripped_mangrove_log_side"],
+  ["stripped_pale_oak_wood", "去皮苍白橡木", "stripped_pale_oak_log_side"],
+  ["stripped_poplar_wood", "去皮白杨木", "stripped_poplar_log_side"],
 ]);
 
 push("石类", [
@@ -157,7 +191,6 @@ push("石英", [
   ["quartz_block", "石英块", "quartz_block_side", "quartz_block_top", "quartz_block_bottom"],
   ["smooth_quartz", "平滑石英块", "quartz_block_bottom", "quartz_block_bottom", "quartz_block_bottom"],
   ["chiseled_quartz_block", "雕纹石英块", "quartz_block_chiseled", "quartz_block_chiseled_top"],
-  ["quartz_pillar", "石英柱", "quartz_block_lines", "quartz_block_lines_top"],
   ["quartz_bricks", "石英砖", "quartz_bricks"],
 ]);
 
@@ -215,21 +248,23 @@ push("金属与矿物", [
   ["amethyst_block", "紫水晶块", "amethyst_block"],
 ]);
 
+// Waxed variants only: identical textures to their plain counterparts, but
+// they never advance to the next oxidation stage once placed, so builds keep
+// the colour chosen at design time. raw_copper_block cannot weather.
 push("铜", [
-  ["copper_block", "铜块", "copper_block"],
-  ["exposed_copper", "斑驳的铜块", "exposed_copper"],
-  ["weathered_copper", "锈蚀的铜块", "weathered_copper"],
-  ["oxidized_copper", "氧化的铜块", "oxidized_copper"],
-  ["cut_copper", "切制铜块", "cut_copper"],
-  ["exposed_cut_copper", "斑驳的切制铜块", "exposed_cut_copper"],
-  ["weathered_cut_copper", "锈蚀的切制铜块", "weathered_cut_copper"],
-  ["oxidized_cut_copper", "氧化的切制铜块", "oxidized_cut_copper"],
+  ["waxed_copper_block", "涂蜡铜块", "copper_block"],
+  ["waxed_exposed_copper", "涂蜡斑驳的铜块", "exposed_copper"],
+  ["waxed_weathered_copper", "涂蜡锈蚀的铜块", "weathered_copper"],
+  ["waxed_oxidized_copper", "涂蜡氧化的铜块", "oxidized_copper"],
+  ["waxed_cut_copper", "涂蜡切制铜块", "cut_copper"],
+  ["waxed_exposed_cut_copper", "涂蜡斑驳的切制铜块", "exposed_cut_copper"],
+  ["waxed_weathered_cut_copper", "涂蜡锈蚀的切制铜块", "weathered_cut_copper"],
+  ["waxed_oxidized_cut_copper", "涂蜡氧化的切制铜块", "oxidized_cut_copper"],
   ["raw_copper_block", "粗铜块", "raw_copper_block"],
 ]);
 
 push("有机方块", [
   ["hay_block", "干草捆", "hay_block_side", "hay_block_top"],
-  ["bookshelf", "书架", "bookshelf"],
   ["sponge", "海绵", "sponge"],
   ["honeycomb_block", "蜜脾块", "honeycomb"],
   ["bone_block", "骨块", "bone_block_side", "bone_block_top"],
