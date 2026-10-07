@@ -21,6 +21,12 @@ export interface VoxelModel {
   palette: BlockState[];
   /** Length `sizeX * sizeY * sizeZ`; each entry indexes into `palette`. */
   indices: Uint32Array;
+  /**
+   * Internal `blockKey -> palette index` cache that keeps `paletteIndexOf`
+   * O(1). Built lazily, so hand-assembled models work too; mutate `palette`
+   * only through `paletteIndexOf` or rebuild this map.
+   */
+  keyCache?: Map<string, number>;
 }
 
 /** Stable key for palette de-duplication: `name[k=v,k2=v2]` with sorted keys. */
@@ -71,13 +77,27 @@ export function createVoxelModel(
   };
 }
 
+/** Build the `blockKey -> index` map, first entry wins on duplicates. */
+function rebuildKeyCache(model: VoxelModel): Map<string, number> {
+  const cache = new Map<string, number>();
+  model.palette.forEach((entry, i) => {
+    const key = blockKey(entry);
+    if (!cache.has(key)) cache.set(key, i);
+  });
+  model.keyCache = cache;
+  return cache;
+}
+
 export function paletteIndexOf(model: VoxelModel, state: BlockState): number {
+  const cache = model.keyCache ?? rebuildKeyCache(model);
   const key = blockKey(state);
-  for (let i = 0; i < model.palette.length; i++) {
-    if (blockKey(model.palette[i]) === key) return i;
+  let index = cache.get(key);
+  if (index === undefined) {
+    index = model.palette.length;
+    model.palette.push(state);
+    cache.set(key, index);
   }
-  model.palette.push(state);
-  return model.palette.length - 1;
+  return index;
 }
 
 export function setVoxel(

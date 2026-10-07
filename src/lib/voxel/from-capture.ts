@@ -7,7 +7,14 @@ import {
   surfaceColor,
   type McvoxCapture,
 } from "./mcvox";
-import { AIR, createVoxelModel, setVoxel, type BlockState, type VoxelModel } from "./model";
+import {
+  AIR,
+  createVoxelModel,
+  paletteIndexOf,
+  setVoxel,
+  type BlockState,
+  type VoxelModel,
+} from "./model";
 
 export type CaptureInterior = "hollow" | "fill";
 
@@ -203,7 +210,7 @@ function expandCapture(
   }
 
   // Guarantee the air entry exists for the encoder.
-  if (!model.palette.includes(AIR)) model.palette.push(AIR);
+  paletteIndexOf(model, AIR);
   return model;
 }
 
