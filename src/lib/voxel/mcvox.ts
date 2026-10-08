@@ -27,8 +27,16 @@ const MAGIC_BYTES = [0x4d, 0x43, 0x56, 0x58];
 const HEADER_BYTES = 12;
 const FLAG_COMPRESSED = 1;
 
+/**
+ * What the capture is of. `block` captures come from the block-capture mod and
+ * default to hollow/culled rendering; older files omit the field and are
+ * entity captures.
+ */
+export type McvoxSubject = "entity" | "block";
+
 export interface McvoxHeader {
   formatVersion: number;
+  /** Namespaced entity id, or block id for `subject: "block"` captures. */
   entityId: string;
   entityName: string;
   mcVersion: string;
@@ -39,6 +47,15 @@ export interface McvoxHeader {
   solid: boolean;
   animatedTick?: number;
   generatedAt?: string;
+  /** Capture subject; absent means `"entity"` (files from before this field). */
+  subject?: McvoxSubject;
+  /** Full block state string, e.g. `oak_stairs[facing=east,half=bottom]`. */
+  blockState?: string;
+}
+
+/** Normalised subject of a capture, defaulting to `"entity"` for old files. */
+export function captureSubject(header: McvoxHeader): McvoxSubject {
+  return header.subject === "block" ? "block" : "entity";
 }
 
 export interface McvoxCapture {

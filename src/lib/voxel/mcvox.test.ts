@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { encodeMcvox, isOccupied, parseMcvox, surfaceColor, type McvoxCapture } from "./mcvox";
+import {
+  captureSubject,
+  encodeMcvox,
+  isOccupied,
+  parseMcvox,
+  surfaceColor,
+  type McvoxCapture,
+} from "./mcvox";
 
 function makeCapture(): McvoxCapture {
   const sizeX = 2;
@@ -49,6 +56,19 @@ describe("mcvox", () => {
     const parsed = parseMcvox(encodeMcvox(makeCapture(), { compress: true }));
     expect(parsed.header.dimensions).toEqual([2, 1, 1]);
     expect(isOccupied(parsed, 1, 0, 0)).toBe(true);
+  });
+
+  it("preserves the block-capture header fields", () => {
+    const capture = makeCapture();
+    capture.header.subject = "block";
+    capture.header.blockState = "oak_stairs[facing=east,half=bottom,shape=straight]";
+    const parsed = parseMcvox(encodeMcvox(capture));
+    expect(captureSubject(parsed.header)).toBe("block");
+    expect(parsed.header.blockState).toBe("oak_stairs[facing=east,half=bottom,shape=straight]");
+  });
+
+  it("treats a header without subject as an entity capture", () => {
+    expect(captureSubject(makeCapture().header)).toBe("entity");
   });
 
   it("rejects a bad magic header", () => {
