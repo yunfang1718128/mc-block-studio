@@ -39,7 +39,7 @@
 ## 下载 / 在线使用
 
 - 网页版：<https://yunfang1718128.github.io/mc-block-studio/>
-- Windows 桌面版（免费）：[Gitee Releases](https://gitee.com/yunfan1718128/mc-block-studio/releases/download/v0.4.0/MC.Block.Studio_0.4.0_x64-setup.exe)（国内高速） · [GitHub Releases](https://github.com/yunfang1718128/mc-block-studio/releases)
+- Windows 桌面版（免费）：[Gitee Releases](https://gitee.com/yunfan1718128/mc-block-studio/releases/download/v0.4.0/MC%20Block%20Studio_0.4.0_x64-setup.exe)（国内高速） · [GitHub Releases](https://github.com/yunfang1718128/mc-block-studio/releases)
 
 ## 配套项目
 
