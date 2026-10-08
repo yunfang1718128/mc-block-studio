@@ -47,5 +47,11 @@ scripts/.cache/
 sample-humanoid.mcvox
 sample-block-stairs.mcvox
 
-# local docs
+# local dev docs (not published)
+# 开发向文档一律不进仓库：发布流程、交接简报、计划、本地构建/调试说明都放这些文件里。
 docs/RELEASING.md
+HANDOFF.md
+DEVELOPING.md
+PLAN.md
+NOTES.md
+TODO.md
