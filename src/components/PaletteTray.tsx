@@ -128,7 +128,7 @@ export function PaletteTray() {
             全不选
           </Button>
         </div>
-        {mode === "mob" && (
+        {(mode === "mob" || mode === "block") && (
           <>
             <Button
               variant="outline"
@@ -139,7 +139,8 @@ export function PaletteTray() {
               筛选不适合方块
             </Button>
             <p className="text-xs leading-relaxed text-muted-foreground">
-              生物模型摆放方块时不会自动转向，原木、草方块这类六面贴图不一致的方块容易露错面；点击可一次性取消勾选。
+              {mode === "mob" ? "生物模型" : "方块复刻与生物模型"}
+              摆放方块时不会自动转向，原木、草方块这类六面贴图不一致的方块容易露错面；点击可一次性取消勾选。
             </p>
           </>
         )}
