@@ -13,11 +13,14 @@ export default function App() {
   const mode = useStudio((s) => s.mode);
   const setMode = useStudio((s) => s.setMode);
   const setViewMode = useStudio((s) => s.setViewMode);
+  const blockSource = useStudio((s) => s.blockSource);
 
   function onModeChange(value: string) {
     const next = value as Mode;
     setMode(next);
-    if (next === "mob") setViewMode("3d");
+    // Mobs always preview in 3D; an uploaded block capture is a voxel grid, for
+    // which the cube net is meaningless.
+    if (next === "mob" || (next === "block" && blockSource === "upload")) setViewMode("3d");
   }
 
   return (

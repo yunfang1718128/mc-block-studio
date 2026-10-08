@@ -1,8 +1,9 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { BLOCKS, BLOCKS_BY_ID, textureUrl } from "@/lib/blocks";
 import { FACE_DIRS, type BlockInfo, type FaceDir } from "@/lib/blocks/types";
-import { buildPalette, matchGrid } from "@/lib/color/match";
-import { buildCapture } from "@/lib/voxel/from-capture";
+import { buildPalette, matchGrid, type PaletteEntry } from "@/lib/color/match";
+import { buildCapture, type CaptureInterior } from "@/lib/voxel/from-capture";
+import type { McvoxCapture } from "@/lib/voxel/mcvox";
 import {
   analyzeComplexity,
   sampleImage,
@@ -55,6 +56,53 @@ const EMPTY: Generation = {
   captureInfo: null,
   error: null,
 };
+
+interface CaptureBuildOptions {
+  magnification: number;
+  interior: CaptureInterior;
+  cull: boolean;
+  /** Catalogue id (without namespace) of the interior filler block. */
+  filler: string;
+}
+
+/**
+ * Expand a `.mcvox` capture into a voxel model. Shared by the mob tab and the
+ * block tab's upload source — both consume the same format through the same
+ * pipeline, and only differ in where the capture comes from.
+ */
+function buildCaptureGeneration(
+  capture: McvoxCapture,
+  palette: readonly PaletteEntry[],
+  options: CaptureBuildOptions
+): Generation {
+  const fillerBlock = BLOCKS_BY_ID.get(options.filler);
+  try {
+    const built = buildCapture(capture, palette, {
+      magnification: options.magnification,
+      interior: options.interior,
+      cull: options.cull,
+      filler: fillerBlock ? toBlockState(fillerBlock) : null,
+    });
+    return {
+      model: built.model,
+      preview: null,
+      previewWidth: 0,
+      previewHeight: 0,
+      previewFace: "south",
+      report: null,
+      textures: null,
+      blockMap: null,
+      captureInfo: {
+        downsample: built.downsample,
+        nativeSize: built.nativeSize,
+        effectiveSize: built.effectiveSize,
+      },
+      error: null,
+    };
+  } catch (err) {
+    return { ...EMPTY, error: err instanceof Error ? err.message : "生成失败" };
+  }
+}
 
 /** Load the six face textures for the chosen source block. */
 export function useReplicaTextures(blockId: string | null): ReplicaTextures | null {
@@ -135,8 +183,17 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
   const captureInterior = useStudio((s) => s.captureInterior);
   const captureCull = useStudio((s) => s.captureCull);
   const captureFiller = useStudio((s) => s.captureFiller);
+  const blockSource = useStudio((s) => s.blockSource);
+  const blockCapture = useStudio((s) => s.blockCapture);
+  const blockMagnification = useStudio((s) => s.blockMagnification);
+  const blockInterior = useStudio((s) => s.blockInterior);
+  const blockCull = useStudio((s) => s.blockCull);
+  const blockFiller = useStudio((s) => s.blockFiller);
 
-  const textures = useReplicaTextures(mode === "block" ? selectedBlockId : null);
+  // Built-in blocks replicate their face textures; an uploaded block capture is
+  // a voxel grid instead, so it must not pull the catalogue textures at all.
+  const builtinBlockId = mode === "block" && blockSource === "builtin" ? selectedBlockId : null;
+  const textures = useReplicaTextures(builtinBlockId);
 
   const palette = useMemo(
     () => buildPalette(BLOCKS.filter((b) => b.kind === "solid" && allowed.has(b.id))),
@@ -179,7 +236,17 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
   }, [mode, cropped, size, resolvedAlgorithm, palette, orientation, thickness, report]);
 
   const block = useMemo<Generation>(() => {
-    if (mode !== "block" || !textures) return EMPTY;
+    if (mode !== "block") return EMPTY;
+    if (blockSource === "upload") {
+      if (!blockCapture) return EMPTY;
+      return buildCaptureGeneration(blockCapture, palette, {
+        magnification: blockMagnification,
+        interior: blockInterior,
+        cull: blockCull,
+        filler: blockFiller,
+      });
+    }
+    if (!textures) return EMPTY;
     return {
       model: buildBlockReplica(textures, palette, { magnification }),
       preview: null,
@@ -192,38 +259,27 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
       captureInfo: null,
       error: null,
     };
-  }, [mode, textures, palette, magnification]);
+  }, [
+    mode,
+    blockSource,
+    blockCapture,
+    blockMagnification,
+    blockInterior,
+    blockCull,
+    blockFiller,
+    textures,
+    palette,
+    magnification,
+  ]);
 
   const mob = useMemo<Generation>(() => {
     if (mode !== "mob" || !capture) return EMPTY;
-    const fillerBlock = BLOCKS_BY_ID.get(captureFiller);
-    const filler = fillerBlock ? toBlockState(fillerBlock) : null;
-    try {
-      const built = buildCapture(capture, palette, {
-        magnification: captureMagnification,
-        interior: captureInterior,
-        cull: captureCull,
-        filler,
-      });
-      return {
-        model: built.model,
-        preview: null,
-        previewWidth: 0,
-        previewHeight: 0,
-        previewFace: "south",
-        report: null,
-        textures: null,
-        blockMap: null,
-        captureInfo: {
-          downsample: built.downsample,
-          nativeSize: built.nativeSize,
-          effectiveSize: built.effectiveSize,
-        },
-        error: null,
-      };
-    } catch (err) {
-      return { ...EMPTY, error: err instanceof Error ? err.message : "生成失败" };
-    }
+    return buildCaptureGeneration(capture, palette, {
+      magnification: captureMagnification,
+      interior: captureInterior,
+      cull: captureCull,
+      filler: captureFiller,
+    });
   }, [mode, capture, captureMagnification, captureInterior, captureCull, captureFiller, palette]);
 
   const generation = mode === "image" ? image : mode === "block" ? block : mob;

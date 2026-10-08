@@ -24,15 +24,20 @@ export function PreviewPanel() {
   const selectedBlockId = useStudio((s) => s.selectedBlockId);
   const magnification = useStudio((s) => s.magnification);
   const capture = useStudio((s) => s.capture);
+  const blockSource = useStudio((s) => s.blockSource);
+  const blockCapture = useStudio((s) => s.blockCapture);
   const { model, preview, previewWidth, previewHeight, previewFace, blockMap, error } = useGeneration();
 
   const block = selectedBlockId ? BLOCKS.find((b) => b.id === selectedBlockId) : undefined;
   const face = 16 * magnification;
 
   const imageBounds = !!preview && previewWidth > 0;
-  const blockReady = !!block && !!blockMap;
+  // An uploaded block capture is a voxel grid — only 3D applies, and the cube
+  // net has nothing to show.
+  const blockUpload = mode === "block" && blockSource === "upload";
+  const blockReady = !blockUpload && !!block && !!blockMap;
   const hasContent =
-    mode === "image" ? imageBounds : mode === "block" ? blockReady : !!model;
+    mode === "image" ? imageBounds : mode === "block" ? (blockUpload ? !!model : blockReady) : !!model;
 
   const missing =
     mode === "image"
@@ -41,14 +46,18 @@ export function PreviewPanel() {
         ? capture
           ? { icon: <PawPrint className="size-8" />, text: error ?? "生物模式请使用 3D 预览" }
           : { icon: <PawPrint className="size-8" />, text: "请先在右侧导入 .mcvox 捕获包" }
-        : block
-          ? { icon: <Boxes className="size-8" />, text: "正在加载贴图…" }
-          : { icon: <Boxes className="size-8" />, text: "请先在右侧选择目标方块" };
+        : blockUpload
+          ? blockCapture
+            ? { icon: <Boxes className="size-8" />, text: error ?? "方块捕获包请使用 3D 预览" }
+            : { icon: <Boxes className="size-8" />, text: "请先在右侧上传 .mcvox 方块捕获包" }
+          : block
+            ? { icon: <Boxes className="size-8" />, text: "正在加载贴图…" }
+            : { icon: <Boxes className="size-8" />, text: "请先在右侧选择目标方块" };
 
   const surface =
     mode === "image" && imageBounds
       ? { width: previewWidth * TEXTURE_PX, height: previewHeight * TEXTURE_PX }
-      : mode === "block" && blockMap
+      : mode === "block" && blockReady && blockMap
         ? {
             width: blockMap.size * NET_COLS * TEXTURE_PX,
             height: blockMap.size * NET_ROWS * TEXTURE_PX,
@@ -86,7 +95,7 @@ export function PreviewPanel() {
           width={surface.width}
           height={surface.height}
           overlay={
-            mode === "block" && block ? (
+            mode === "block" && block && blockReady ? (
               <p className="rounded-md bg-white/85 px-2 py-1 text-xs text-muted-foreground shadow ring-1 ring-gray-200 dark:bg-zinc-900/85 dark:ring-zinc-700">
                 {block.name} · 单面 {face}×{face} · 总体 {face}×{face}×{face}
               </p>

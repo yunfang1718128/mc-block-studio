@@ -10,6 +10,8 @@ import type { McvoxCapture } from "@/lib/voxel/mcvox";
 export type Mode = "image" | "block" | "mob";
 export type ViewMode = "2d" | "3d";
 export type PreviewZoom = "fit" | "100%";
+/** Where the block tab takes its replica source from. */
+export type BlockSource = "builtin" | "upload";
 
 interface StudioState {
   allowed: Set<string>;
@@ -45,6 +47,23 @@ interface StudioState {
   selectBlock: (id: string) => void;
   magnification: number;
   setMagnification: (magnification: number) => void;
+
+  blockSource: BlockSource;
+  setBlockSource: (source: BlockSource) => void;
+  /** A parsed `.mcvox` block capture, or `null` before one is loaded. */
+  blockCapture: McvoxCapture | null;
+  blockCaptureName: string;
+  setBlockCapture: (capture: McvoxCapture | null, name?: string) => void;
+  blockMagnification: number;
+  setBlockMagnification: (magnification: number) => void;
+  blockInterior: CaptureInterior;
+  setBlockInterior: (interior: CaptureInterior) => void;
+  /** Drop surface-coloured voxels that are not visible from outside (default on). */
+  blockCull: boolean;
+  setBlockCull: (cull: boolean) => void;
+  /** Block id (without namespace) used to fill hidden interior voxels. */
+  blockFiller: string;
+  setBlockFiller: (id: string) => void;
 
   /** A parsed `.mcvox` entity capture, or `null` before one is loaded. */
   capture: McvoxCapture | null;
@@ -124,6 +143,21 @@ export const useStudio = create<StudioState>((set) => ({
   selectBlock: (id) => set({ selectedBlockId: id }),
   magnification: 3,
   setMagnification: (magnification) => set({ magnification }),
+
+  blockSource: "builtin",
+  setBlockSource: (blockSource) => set({ blockSource }),
+  blockCapture: null,
+  blockCaptureName: "",
+  setBlockCapture: (blockCapture, name) =>
+    set({ blockCapture, blockCaptureName: name ?? "" }),
+  blockMagnification: 2,
+  setBlockMagnification: (blockMagnification) => set({ blockMagnification }),
+  blockInterior: "hollow",
+  setBlockInterior: (blockInterior) => set({ blockInterior }),
+  blockCull: true,
+  setBlockCull: (blockCull) => set({ blockCull }),
+  blockFiller: "stone",
+  setBlockFiller: (blockFiller) => set({ blockFiller }),
 
   capture: null,
   captureName: "",
