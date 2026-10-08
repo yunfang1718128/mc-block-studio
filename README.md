@@ -16,7 +16,9 @@
 
 ### 选择方块 → 3D 复刻
 
-选一个原版完整方块，生成中空放大的 3D 复刻（逐面贴图，最近邻采样保留原版像素风格）。
+选一个原版完整方块（**内置方块**），生成中空放大的 3D 复刻（逐面贴图，最近邻采样保留原版像素风格）。
+
+也可以切到**上传文件**，导入由 [**Block Capture**](https://github.com/yunfang1718128/block-capture) 模组在游戏内捕获的 `.mcvox` 方块包——楼梯、栅栏、火把、模组装饰这类**非完整立方体**会按真实形状还原，并可以调放大倍率、空心/填充。
 
 ![方块 3D 复刻](./docs/images/tab-block.webp)
 
@@ -39,13 +41,18 @@
 
 ## 配套项目
 
-生物体素来自姊妹项目 **[Entity Capture](https://github.com/yunfang1718128/entity-capture)**——一个 **Fabric / NeoForge** 客户端模组，在游戏内把任意实体（含模组生物）按 1:1 原生分辨率捕获为 `.mcvox` 文件（带搜索 / 分类筛选 / 多选批量捕获）。两个项目仅通过 `.mcvox` 这一份格式耦合：
+两个姊妹模组把游戏内的模型采集成本工具能读的 `.mcvox`，它们与 studio 之间**只通过这一份格式耦合**：
+
+- **[Entity Capture](https://github.com/yunfang1718128/entity-capture)** —— **Fabric / NeoForge** 客户端模组，把任意实体（含模组生物）按 1:1 原生分辨率捕获（带搜索 / 分类筛选 / 多选批量捕获）。捕获包导入「导入生物」页签。
+- **[Block Capture](https://github.com/yunfang1718128/block-capture)** —— **Fabric / NeoForge** 客户端模组，把任意方块（含模组方块，非完整立方体也支持）按 1:1 原生分辨率捕获。捕获包导入「选择方块」→「上传文件」。
 
 ```
-[Entity Capture 模组] 游戏内捕获  →  .mcvox  →  本工具：放大 → 空心/填充 → 匹配方块 → 导出 .litematic
+[Entity Capture 模组]  游戏内捕获实体 ─┐
+                                      ├─►  .mcvox  ─►  本工具：放大 → 空心/填充 → 匹配方块 → 导出 .litematic
+[Block Capture 模组]   游戏内捕获方块 ─┘
 ```
 
-- 仓库：<https://github.com/yunfang1718128/entity-capture>
+两个模组写出的文件是同一种容器（`MCVX` v1），方块捕获只在头部多了 `subject: "block"` 与 `blockState`，所以两边可以互换使用。
 
 ## 技术栈
 
@@ -59,6 +66,9 @@ pnpm dev          # 开发服务器 http://localhost:5173
 pnpm test         # 单元测试（vitest）
 pnpm typecheck    # tsc --noEmit
 pnpm build        # 类型检查 + 生产构建
+
+pnpm sample:capture   # 造一个生物捕获样例，试「导入生物」
+pnpm sample:block     # 造一个楼梯形状的方块捕获样例，试「选择方块 → 上传文件」
 ```
 
 ## 构建 Windows 桌面版

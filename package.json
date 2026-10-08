@@ -15,6 +15,7 @@
     "fetch:blocks": "node scripts/fetch-textures.mjs",
     "build:blocks": "node scripts/build-block-data.mjs",
     "sample:capture": "node scripts/make-sample-capture.mjs",
+    "sample:block": "node scripts/make-sample-block-capture.mjs",
     "build:mobs": "node scripts/build-mob-library.mjs",
     "tauri": "tauri",
     "desktop:dev": "tauri dev",
