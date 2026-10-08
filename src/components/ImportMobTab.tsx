@@ -1,17 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ExternalLink, FileUp, PawPrint } from "lucide-react";
 import { parseMcvox } from "@/lib/voxel/mcvox";
 import { BUILTIN_MOBS, mobUrl, type BuiltinMob, type MobCategory } from "@/lib/voxel/builtin-mobs";
-import { nonAirCount } from "@/lib/voxel/model";
 import { cn } from "@/lib/utils";
 import { useStudio } from "@/state/store";
 import { useGeneration } from "@/state/useGeneration";
-import { useDebouncedValue } from "@/state/useDebouncedValue";
-import { FillerPicker } from "@/components/FillerPicker";
+import { CaptureOptionsPanel } from "@/components/CaptureOptionsPanel";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 const MAG_MIN = 1;
 const MAG_MAX = 8;
@@ -45,19 +41,6 @@ export function ImportMobTab() {
   const [parseError, setParseError] = useState<string | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  // Commit the magnification once dragging stops so the model never rebuilds
-  // mid-drag.
-  const [magDraft, setMagDraft] = useState(magnification);
-  useEffect(() => {
-    setMagDraft(magnification);
-  }, [magnification]);
-  const debouncedMag = useDebouncedValue(magDraft, 200);
-  useEffect(() => {
-    if (debouncedMag !== magnification) setMagnification(debouncedMag);
-  }, [debouncedMag, magnification, setMagnification]);
-
-  const total = useMemo(() => (model ? nonAirCount(model) : 0), [model]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -210,76 +193,22 @@ export function ImportMobTab() {
             </p>
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="capture-magnification">
-              放大倍率：<span className="font-normal text-muted-foreground">{magDraft}×</span>
-            </Label>
-            <input
-              id="capture-magnification"
-              type="range"
-              min={MAG_MIN}
-              max={MAG_MAX}
-              step={1}
-              value={magDraft}
-              onChange={(e) => setMagDraft(Number(e.target.value))}
-              className="w-full accent-[var(--primary)]"
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label>内部处理</Label>
-            <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
-              <Button
-                variant={interior === "hollow" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setInterior("hollow")}
-              >
-                空心
-              </Button>
-              <Button
-                variant={interior === "fill" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setInterior("fill")}
-              >
-                填充
-              </Button>
-            </div>
-            <label className="flex cursor-pointer items-center gap-2 text-sm">
-              <Checkbox checked={cull} onCheckedChange={(checked) => setCull(checked === true)} />
-              剔除内部不可见方块
-            </label>
-          </div>
-
-          {interior === "fill" && (
-            <div className="flex flex-col gap-1.5">
-              <Label>填充方块</Label>
-              <FillerPicker value={filler} onChange={setFiller} />
-            </div>
-          )}
-
-          <div className="flex flex-col gap-1 rounded-md bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
-            {model ? (
-              <>
-                <p>
-                  总体尺寸：
-                  <span className="font-medium text-foreground">
-                    {model.sizeX}×{model.sizeY}×{model.sizeZ}
-                  </span>
-                </p>
-                <p>
-                  共 <span className="font-medium text-foreground">{total}</span> 个方块
-                </p>
-                {captureInfo && captureInfo.downsample > 1 && (
-                  <p className="text-amber-600 dark:text-amber-500">
-                    体素过多，已按 1/{captureInfo.downsample} 分辨率预览（原始{" "}
-                    {captureInfo.nativeSize.join("×")} → {captureInfo.effectiveSize.join("×")}）
-                  </p>
-                )}
-              </>
-            ) : (
-              <p className="text-destructive">{error ?? "无法生成"}</p>
-            )}
-          </div>
+          <CaptureOptionsPanel
+            idPrefix="mob"
+            magnificationMin={MAG_MIN}
+            magnificationMax={MAG_MAX}
+            magnification={magnification}
+            onMagnification={setMagnification}
+            interior={interior}
+            onInterior={setInterior}
+            cull={cull}
+            onCull={setCull}
+            filler={filler}
+            onFiller={setFiller}
+            model={model}
+            captureInfo={captureInfo}
+            error={error}
+          />
         </>
       )}
     </div>
