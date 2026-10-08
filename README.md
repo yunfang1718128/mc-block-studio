@@ -18,7 +18,7 @@
 
 选一个原版完整方块（**内置方块**），生成中空放大的 3D 复刻（逐面贴图，最近邻采样保留原版像素风格）。
 
-也可以切到**上传文件**，导入由 [**Block Capture**](https://github.com/yunfang1718128/block-capture) 模组在游戏内捕获的 `.mcvox` 方块包——楼梯、栅栏、火把、模组装饰这类**非完整立方体**会按真实形状还原，并可以调放大倍率、空心/填充。
+也可以切到**上传文件**，导入由 [**Block Capture**](https://github.com/yunfang1718128/block-capture) 模组在游戏内捕获的 `.mcvox` 方块包：楼梯、栅栏、火把、模组装饰这类**非完整立方体**会按真实形状还原，**箱子 / 告示牌 / 旗帜 / 床 / 潜影盒 / 头颅**这类由方块实体渲染的方块也一并支持，并可以调放大倍率、空心/填充。
 
 ![方块 3D 复刻](./docs/images/tab-block.webp)
 
@@ -44,7 +44,7 @@
 两个姊妹模组把游戏内的模型采集成本工具能读的 `.mcvox`，它们与 studio 之间**只通过这一份格式耦合**：
 
 - **[Entity Capture](https://github.com/yunfang1718128/entity-capture)** —— **Fabric / NeoForge** 客户端模组，把任意实体（含模组生物）按 1:1 原生分辨率捕获（带搜索 / 分类筛选 / 多选批量捕获）。捕获包导入「导入生物」页签。
-- **[Block Capture](https://github.com/yunfang1718128/block-capture)** —— **Fabric / NeoForge** 客户端模组，把任意方块（含模组方块，非完整立方体也支持）按 1:1 原生分辨率捕获。捕获包导入「选择方块」→「上传文件」。
+- **[Block Capture](https://github.com/yunfang1718128/block-capture)** —— **Fabric / NeoForge** 客户端模组，把任意方块（含模组方块，非完整立方体也支持）按 16 单位/方块 捕获；约 128 个靠方块实体渲染的方块状态（箱子 / 告示牌 / 旗帜 / 床 / 潜影盒 / 头颅等）也能拿到。捕获包导入「选择方块」→「上传文件」。
 
 ```
 [Entity Capture 模组]  游戏内捕获实体 ─┐
