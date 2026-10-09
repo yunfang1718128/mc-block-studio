@@ -1775,7 +1775,7 @@ dependencies = [
 
 [[package]]
 name = "mc-block-studio"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "log",
  "serde",
