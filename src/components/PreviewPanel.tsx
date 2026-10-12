@@ -1,5 +1,6 @@
 import { Boxes, ImageIcon, PawPrint } from "lucide-react";
 import { BLOCKS } from "@/lib/blocks";
+import { scaleStepFor } from "@/lib/voxel/scale-ladder";
 import { cn } from "@/lib/utils";
 import { useStudio, type ViewMode } from "@/state/store";
 import { useGeneration } from "@/state/useGeneration";
@@ -29,7 +30,11 @@ export function PreviewPanel() {
   const { model, preview, previewWidth, previewHeight, previewFace, blockMap, error } = useGeneration();
 
   const block = selectedBlockId ? BLOCKS.find((b) => b.id === selectedBlockId) : undefined;
-  const face = 16 * magnification;
+  const magScale = scaleStepFor(magnification);
+  const face =
+    magScale.den > 1
+      ? Math.max(1, Math.ceil(16 / magScale.den))
+      : 16 * magScale.num;
 
   const imageBounds = !!preview && previewWidth > 0;
   // An uploaded block capture is a voxel grid — only 3D applies, and the cube

@@ -3,6 +3,7 @@ import { BLOCKS, BLOCKS_BY_ID, textureUrl } from "@/lib/blocks";
 import { FACE_DIRS, type BlockInfo, type FaceDir } from "@/lib/blocks/types";
 import { buildPalette, matchGrid, type PaletteEntry } from "@/lib/color/match";
 import { buildCapture, type CaptureInterior } from "@/lib/voxel/from-capture";
+import { scaleStepFor, type ScaleStep } from "@/lib/voxel/scale-ladder";
 import type { McvoxCapture } from "@/lib/voxel/mcvox";
 import {
   analyzeComplexity,
@@ -22,6 +23,8 @@ import { useStudio } from "./store";
 export interface CaptureInfo {
   /** Integer downsampling factor applied to the native capture (1 = none). */
   downsample: number;
+  /** Downsample forced by the chosen shrink scale (1 when expanding). */
+  requestedDownsample: number;
   nativeSize: [number, number, number];
   effectiveSize: [number, number, number];
 }
@@ -58,7 +61,7 @@ const EMPTY: Generation = {
 };
 
 interface CaptureBuildOptions {
-  magnification: number;
+  scale: ScaleStep;
   interior: CaptureInterior;
   cull: boolean;
   /** Catalogue id (without namespace) of the interior filler block. */
@@ -78,7 +81,7 @@ function buildCaptureGeneration(
   const fillerBlock = BLOCKS_BY_ID.get(options.filler);
   try {
     const built = buildCapture(capture, palette, {
-      magnification: options.magnification,
+      scale: options.scale,
       interior: options.interior,
       cull: options.cull,
       filler: fillerBlock ? toBlockState(fillerBlock) : null,
@@ -94,6 +97,7 @@ function buildCaptureGeneration(
       blockMap: null,
       captureInfo: {
         downsample: built.downsample,
+        requestedDownsample: built.requestedDownsample,
         nativeSize: built.nativeSize,
         effectiveSize: built.effectiveSize,
       },
@@ -240,7 +244,7 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
     if (blockSource === "upload") {
       if (!blockCapture) return EMPTY;
       return buildCaptureGeneration(blockCapture, palette, {
-        magnification: blockMagnification,
+        scale: scaleStepFor(blockMagnification),
         interior: blockInterior,
         cull: blockCull,
         filler: blockFiller,
@@ -248,7 +252,7 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
     }
     if (!textures) return EMPTY;
     return {
-      model: buildBlockReplica(textures, palette, { magnification }),
+      model: buildBlockReplica(textures, palette, { scale: scaleStepFor(magnification) }),
       preview: null,
       previewWidth: 0,
       previewHeight: 0,
@@ -275,7 +279,7 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
   const mob = useMemo<Generation>(() => {
     if (mode !== "mob" || !capture) return EMPTY;
     return buildCaptureGeneration(capture, palette, {
-      magnification: captureMagnification,
+      scale: scaleStepFor(captureMagnification),
       interior: captureInterior,
       cull: captureCull,
       filler: captureFiller,

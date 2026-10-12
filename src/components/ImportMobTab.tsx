@@ -9,8 +9,9 @@ import { CaptureOptionsPanel } from "@/components/CaptureOptionsPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-const MAG_MIN = 1;
-const MAG_MAX = 8;
+// `SCALE_LADDER` indices: 0 = 1/4× shrink, 10 = 8× expand.
+const MAG_MIN = 0;
+const MAG_MAX = 10;
 
 type Source = "builtin" | "upload";
 
@@ -195,8 +196,8 @@ export function ImportMobTab() {
 
           <CaptureOptionsPanel
             idPrefix="mob"
-            magnificationMin={MAG_MIN}
-            magnificationMax={MAG_MAX}
+            scaleMin={MAG_MIN}
+            scaleMax={MAG_MAX}
             magnification={magnification}
             onMagnification={setMagnification}
             interior={interior}

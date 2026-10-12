@@ -45,6 +45,7 @@ interface StudioState {
 
   selectedBlockId: string | null;
   selectBlock: (id: string) => void;
+  /** Index into `SCALE_LADDER` for the built-in block replica (see scale-ladder). */
   magnification: number;
   setMagnification: (magnification: number) => void;
 
@@ -54,6 +55,7 @@ interface StudioState {
   blockCapture: McvoxCapture | null;
   blockCaptureName: string;
   setBlockCapture: (capture: McvoxCapture | null, name?: string) => void;
+  /** Index into `SCALE_LADDER` for the uploaded block capture. */
   blockMagnification: number;
   setBlockMagnification: (magnification: number) => void;
   blockInterior: CaptureInterior;
@@ -69,6 +71,7 @@ interface StudioState {
   capture: McvoxCapture | null;
   captureName: string;
   setCapture: (capture: McvoxCapture | null, name?: string) => void;
+  /** Index into `SCALE_LADDER` for the mob capture. */
   captureMagnification: number;
   setCaptureMagnification: (magnification: number) => void;
   captureInterior: CaptureInterior;
@@ -141,7 +144,8 @@ export const useStudio = create<StudioState>((set) => ({
 
   selectedBlockId: null,
   selectBlock: (id) => set({ selectedBlockId: id }),
-  magnification: 3,
+  // Ladder index 5 = 3× (see SCALE_LADDER).
+  magnification: 5,
   setMagnification: (magnification) => set({ magnification }),
 
   blockSource: "builtin",
@@ -150,7 +154,7 @@ export const useStudio = create<StudioState>((set) => ({
   blockCaptureName: "",
   setBlockCapture: (blockCapture, name) =>
     set({ blockCapture, blockCaptureName: name ?? "" }),
-  blockMagnification: 2,
+  blockMagnification: 4,
   setBlockMagnification: (blockMagnification) => set({ blockMagnification }),
   blockInterior: "hollow",
   setBlockInterior: (blockInterior) => set({ blockInterior }),
@@ -162,7 +166,7 @@ export const useStudio = create<StudioState>((set) => ({
   capture: null,
   captureName: "",
   setCapture: (capture, name) => set({ capture, captureName: name ?? "" }),
-  captureMagnification: 2,
+  captureMagnification: 4,
   setCaptureMagnification: (captureMagnification) => set({ captureMagnification }),
   captureInterior: "hollow",
   setCaptureInterior: (captureInterior) => set({ captureInterior }),

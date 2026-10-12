@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { nonAirCount, type VoxelModel } from "@/lib/voxel/model";
 import type { CaptureInterior } from "@/lib/voxel/from-capture";
+import { scaleLabel, scaleStepFor } from "@/lib/voxel/scale-ladder";
 import { useDebouncedValue } from "@/state/useDebouncedValue";
 import { FillerPicker } from "@/components/FillerPicker";
 import { Button } from "@/components/ui/button";
@@ -10,14 +11,16 @@ import { Label } from "@/components/ui/label";
 /** Layout details reported by `buildCapture` for oversized captures. */
 export interface CaptureOptionsInfo {
   downsample: number;
+  requestedDownsample: number;
   nativeSize: [number, number, number];
   effectiveSize: [number, number, number];
 }
 
 export interface CaptureOptionsPanelProps {
-  /** Slider bounds; the block tab spans a wider range than the mob tab. */
-  magnificationMin?: number;
-  magnificationMax?: number;
+  /** Scale-ladder index bounds; the block tab spans a wider range than the mob tab. */
+  scaleMin?: number;
+  scaleMax?: number;
+  /** Current scale as a `SCALE_LADDER` index. */
   magnification: number;
   onMagnification: (value: number) => void;
   interior: CaptureInterior;
@@ -34,14 +37,14 @@ export interface CaptureOptionsPanelProps {
 }
 
 /**
- * The controls shared by every `.mcvox` capture: how far to magnify it, whether
- * the interior is hollow or filled, whether hidden voxels are culled, and what
- * the resulting grid looks like. Both the mob tab and the block tab's upload
- * source drive `buildCapture` with exactly these options.
+ * The controls shared by every `.mcvox` capture: how far to scale it (shrink or
+ * expand), whether the interior is hollow or filled, whether hidden voxels are
+ * culled, and what the resulting grid looks like. Both the mob tab and the block
+ * tab's upload source drive `buildCapture` with exactly these options.
  */
 export function CaptureOptionsPanel({
-  magnificationMin = 1,
-  magnificationMax = 8,
+  scaleMin = 0,
+  scaleMax = 10,
   magnification,
   onMagnification,
   interior,
@@ -73,13 +76,16 @@ export function CaptureOptionsPanel({
     <>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={magId}>
-          放大倍率：<span className="font-normal text-muted-foreground">{magDraft}×</span>
+          缩放倍率：
+          <span className="font-normal text-muted-foreground">
+            {scaleLabel(scaleStepFor(magDraft))}
+          </span>
         </Label>
         <input
           id={magId}
           type="range"
-          min={magnificationMin}
-          max={magnificationMax}
+          min={scaleMin}
+          max={scaleMax}
           step={1}
           value={magDraft}
           onChange={(e) => setMagDraft(Number(e.target.value))}
@@ -130,7 +136,7 @@ export function CaptureOptionsPanel({
             <p>
               共 <span className="font-medium text-foreground">{total}</span> 个方块
             </p>
-            {captureInfo && captureInfo.downsample > 1 && (
+            {captureInfo && captureInfo.downsample > captureInfo.requestedDownsample && (
               <p className="text-amber-600 dark:text-amber-500">
                 体素过多，已按 1/{captureInfo.downsample} 分辨率预览（原始{" "}
                 {captureInfo.nativeSize.join("×")} → {captureInfo.effectiveSize.join("×")}）

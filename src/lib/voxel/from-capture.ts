@@ -1,5 +1,6 @@
 import { matchColor, type PaletteEntry } from "../color/match";
 import { toBlockState } from "./from-image";
+import type { ScaleStep } from "./scale-ladder";
 import {
   captureIndex,
   downsampleCapture,
@@ -31,8 +32,8 @@ export type CaptureInterior = "hollow" | "fill";
 export const MAX_CAPTURE_VOXELS = 32_000_000;
 
 export interface CaptureOptions {
-  /** How many blocks each native voxel becomes (N³ expansion). */
-  magnification: number;
+  /** Scale as an exact rational: num>1 expands (N³), den>1 shrinks the capture. */
+  scale: ScaleStep;
   /** `hollow` keeps only the textured shell; `fill` also fills hidden interior. */
   interior: CaptureInterior;
   /**
@@ -54,12 +55,14 @@ export function captureBounds(
   return { sizeX: capture.sizeX * n, sizeY: capture.sizeY * n, sizeZ: capture.sizeZ * n };
 }
 
-/** How a capture will be laid out once expanded (before any downsampling). */
+/** How a capture will be laid out once scaled. */
 export interface CapturePlan {
-  /** Applied magnification (integer, at least 1). */
+  /** Integer expansion factor applied to each effective voxel (≥ 1). */
   magnification: number;
   /** Integer downsampling factor applied to the native capture (1 = none). */
   downsample: number;
+  /** Downsample forced by the chosen scale (the shrink step); 1 when expanding. */
+  requestedDownsample: number;
   /** Original capture dimensions. */
   nativeSize: [number, number, number];
   /** Native dimensions after downsampling. */
@@ -71,19 +74,22 @@ export interface CapturePlan {
 }
 
 /**
- * Choose the smallest integer downsampling factor such that the expanded grid
- * fits within `limit`. Only throws when even a 1×1×1 capture cannot be reduced
- * any further (i.e. the magnification alone exceeds the budget).
+ * Apply the chosen scale: a shrink step contributes its denominator as a
+ * starting downsample factor, an expand step its numerator as the N³ expansion.
+ * The loop then raises the downsample only as far as needed to fit `limit`,
+ * starting from (never below) the requested shrink. Throws only when even a
+ * 1×1×1 capture at this expansion cannot fit the budget.
  */
 export function planCapture(
   capture: McvoxCapture,
-  magnification: number,
+  scale: ScaleStep,
   limit: number = MAX_CAPTURE_VOXELS
 ): CapturePlan {
-  const n = Math.max(1, Math.floor(magnification));
+  const n = Math.max(1, Math.floor(scale.num));
+  const d0 = Math.max(1, Math.floor(scale.den));
   const nativeSize: [number, number, number] = [capture.sizeX, capture.sizeY, capture.sizeZ];
 
-  for (let d = 1; ; d++) {
+  for (let d = d0; ; d++) {
     const ex = Math.ceil(capture.sizeX / d);
     const ey = Math.ceil(capture.sizeY / d);
     const ez = Math.ceil(capture.sizeZ / d);
@@ -92,6 +98,7 @@ export function planCapture(
       return {
         magnification: n,
         downsample: d,
+        requestedDownsample: d0,
         nativeSize,
         effectiveSize: [ex, ey, ez],
         modelSize: [ex * n, ey * n, ez * n],
@@ -100,7 +107,7 @@ export function planCapture(
     }
     // Once the capture is down to a single voxel, no factor can shrink it more.
     if (ex === 1 && ey === 1 && ez === 1) {
-      throw new RangeError(`捕获体素过多（${volume}），请降低放大倍率`);
+      throw new RangeError(`捕获体素过多（${volume}），请降低缩放倍率`);
     }
   }
 }
@@ -110,6 +117,8 @@ export interface CaptureBuild {
   model: VoxelModel;
   /** Integer downsampling factor applied to the native capture (1 = none). */
   downsample: number;
+  /** Downsample forced by the chosen shrink scale (1 when expanding). */
+  requestedDownsample: number;
   nativeSize: [number, number, number];
   effectiveSize: [number, number, number];
 }
@@ -118,24 +127,25 @@ export interface CaptureBuild {
  * Turn a native-resolution `.mcvox` capture into a voxel model:
  *
  * 1. Match each distinct surface colour to a palette block once.
- * 2. Expand every native voxel into an `N × N × N` region for the chosen
- *    magnification.
+ * 2. Shrink (integer downsample) or expand (N³ fill) per the chosen scale.
  * 3. Hidden interior voxels become a filler block (`fill`) or stay air
  *    (`hollow`).
  *
- * Oversized captures are downsampled rather than rejected so they can always be
- * previewed; `downsample` reports the applied factor.
+ * Oversized captures are downsampled further rather than rejected so they can
+ * always be previewed; `downsample` reports the applied factor.
  */
 export function buildCapture(
   capture: McvoxCapture,
   palette: readonly PaletteEntry[],
   options: CaptureOptions
 ): CaptureBuild {
-  const plan = planCapture(capture, options.magnification);
-  const source = plan.downsample > 1 ? downsampleCapture(capture, plan.downsample) : capture;
+  const plan = planCapture(capture, options.scale);
+  const source =
+    plan.downsample > 1 ? downsampleCapture(capture, plan.downsample, { color: "majority" }) : capture;
   return {
     model: expandCapture(source, palette, plan.magnification, options),
     downsample: plan.downsample,
+    requestedDownsample: plan.requestedDownsample,
     nativeSize: plan.nativeSize,
     effectiveSize: plan.effectiveSize,
   };

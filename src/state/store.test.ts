@@ -54,7 +54,7 @@ describe("block tab upload state", () => {
       blockSource: "builtin",
       blockCapture: null,
       blockCaptureName: "",
-      blockMagnification: 2,
+      blockMagnification: 4, // ladder index = 2×
       blockInterior: "hollow",
       blockCull: true,
       blockFiller: "stone",

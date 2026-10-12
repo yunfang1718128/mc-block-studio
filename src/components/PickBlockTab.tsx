@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Boxes, ExternalLink, FileUp, Search } from "lucide-react";
 import { BLOCKS, CATEGORIES } from "@/lib/blocks";
 import { captureSubject, parseMcvox } from "@/lib/voxel/mcvox";
+import { scaleLabel, scaleStepFor } from "@/lib/voxel/scale-ladder";
 import { useStudio, type BlockSource } from "@/state/store";
 import { useGeneration } from "@/state/useGeneration";
 import { useDebouncedValue } from "@/state/useDebouncedValue";
@@ -12,9 +13,9 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 const TEXTURE_PIXELS = 16;
-/** Uploaded captures are voxel grids, so they afford a wider zoom than a 16px face. */
-const UPLOAD_MAG_MIN = 1;
-const UPLOAD_MAG_MAX = 12;
+/** `SCALE_LADDER` index bounds: 0 = 1/4× shrink, 14 = 12× expand. */
+const UPLOAD_MAG_MIN = 0;
+const UPLOAD_MAG_MAX = 14;
 
 const SOURCES: { key: BlockSource; label: string }[] = [
   { key: "builtin", label: "内置方块" },
@@ -64,7 +65,11 @@ export function PickBlockTab() {
     })).filter((g) => g.blocks.length > 0);
   }, [query]);
 
-  const face = TEXTURE_PIXELS * magDraft;
+  const magScale = scaleStepFor(magDraft);
+  const face =
+    magScale.den > 1
+      ? Math.max(1, Math.ceil(TEXTURE_PIXELS / magScale.den))
+      : TEXTURE_PIXELS * magScale.num;
 
   function onSourceChange(next: BlockSource) {
     setSource(next);
@@ -151,13 +156,16 @@ export function PickBlockTab() {
           <div className="flex flex-col gap-3 border-t border-border p-4">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="magnification">
-                放大倍率：<span className="font-normal text-muted-foreground">{magDraft}×</span>
+                缩放倍率：
+                <span className="font-normal text-muted-foreground">
+                  {scaleLabel(magScale)}
+                </span>
               </Label>
               <input
                 id="magnification"
                 type="range"
-                min={1}
-                max={12}
+                min={0}
+                max={14}
                 step={1}
                 value={magDraft}
                 onChange={(e) => setMagDraft(Number(e.target.value))}
@@ -233,8 +241,8 @@ export function PickBlockTab() {
 
               <CaptureOptionsPanel
                 idPrefix="block"
-                magnificationMin={UPLOAD_MAG_MIN}
-                magnificationMax={UPLOAD_MAG_MAX}
+                scaleMin={UPLOAD_MAG_MIN}
+                scaleMax={UPLOAD_MAG_MAX}
                 magnification={blockMagnification}
                 onMagnification={setBlockMagnification}
                 interior={blockInterior}

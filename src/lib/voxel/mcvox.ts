@@ -19,6 +19,7 @@
  */
 import { deflate, inflate } from "pako";
 import type { Rgb } from "../blocks/types";
+import { symmetricPartition } from "./scale-ladder";
 
 export const MCVOX_MAGIC = "MCVX";
 export const MCVOX_FORMAT_VERSION = 1;
@@ -113,15 +114,34 @@ export function surfaceColor(capture: McvoxCapture, x: number, y: number, z: num
   return [capture.colors[i], capture.colors[i + 1], capture.colors[i + 2]];
 }
 
+export interface DownsampleOptions {
+  /**
+   * How to pick the colour for a merged block. `first` (default) keeps the
+   * legacy cheap scan (first non-transparent voxel wins); `majority` counts the
+   * exact colours of *exposed* voxels (those with an air neighbour) in the cell
+   * and keeps the most common one, so hidden interior tints in real captures do
+   * not drown surface colours.
+   */
+  color?: "first" | "majority";
+}
+
 /**
  * Reduce a capture's resolution by an integer factor: each output voxel covers
  * a `factor × factor × factor` block of source voxels. A block is occupied when
- * any source voxel in it is occupied, and its colour is the first
- * non-transparent source colour found. The header dimensions are updated.
+ * any source voxel in it is occupied. With `color: "majority"` the output colour
+ * is the most common non-transparent colour among the exposed voxels of a
+ * symmetrically-placed block (ties go to the colour nearest the cell centre,
+ * then the lowest colour key); otherwise it is the first non-transparent source
+ * colour in a fixed-stride block. The header dimensions are updated.
  */
-export function downsampleCapture(capture: McvoxCapture, factor: number): McvoxCapture {
+export function downsampleCapture(
+  capture: McvoxCapture,
+  factor: number,
+  options: DownsampleOptions = {}
+): McvoxCapture {
   const d = Math.max(1, Math.floor(factor));
   if (d <= 1) return capture;
+  const majority = options.color === "majority";
 
   const sizeX = Math.ceil(capture.sizeX / d);
   const sizeY = Math.ceil(capture.sizeY / d);
@@ -129,6 +149,21 @@ export function downsampleCapture(capture: McvoxCapture, factor: number): McvoxC
   const count = sizeX * sizeY * sizeZ;
   const occupancy = new Uint8Array(Math.ceil(count / 8));
   const colors = new Uint8Array(count * 4);
+
+  // Symmetric cell boundaries for the majority path, so a mirror-symmetric
+  // capture downsamples to a mirror-symmetric result. The legacy `first` scan
+  // keeps its cheap fixed-stride grid.
+  const bx = symmetricPartition(capture.sizeX, sizeX);
+  const by = symmetricPartition(capture.sizeY, sizeY);
+  const bz = symmetricPartition(capture.sizeZ, sizeZ);
+
+  const occupiedAt = (x: number, y: number, z: number): boolean => {
+    if (x < 0 || y < 0 || z < 0 || x >= capture.sizeX || y >= capture.sizeY || z >= capture.sizeZ) {
+      return false;
+    }
+    const i = captureIndex(capture, x, y, z);
+    return (capture.occupancy[i >> 3] & (1 << (i & 7))) !== 0;
+  };
 
   for (let oy = 0; oy < sizeY; oy++) {
     for (let oz = 0; oz < sizeZ; oz++) {
@@ -139,21 +174,105 @@ export function downsampleCapture(capture: McvoxCapture, factor: number): McvoxC
         const zEnd = Math.min((oz + 1) * d, capture.sizeZ);
         const xEnd = Math.min((ox + 1) * d, capture.sizeX);
 
-        for (let y = oy * d; y < yEnd && (!occupied || !color); y++) {
-          for (let z = oz * d; z < zEnd && (!occupied || !color); z++) {
-            for (let x = ox * d; x < xEnd; x++) {
-              const si = captureIndex(capture, x, y, z);
-              if (!occupied && (capture.occupancy[si >> 3] & (1 << (si & 7))) !== 0) {
-                occupied = true;
+        if (!majority) {
+          for (let y = oy * d; y < yEnd && (!occupied || !color); y++) {
+            for (let z = oz * d; z < zEnd && (!occupied || !color); z++) {
+              for (let x = ox * d; x < xEnd; x++) {
+                const si = captureIndex(capture, x, y, z);
+                if (!occupied && (capture.occupancy[si >> 3] & (1 << (si & 7))) !== 0) {
+                  occupied = true;
+                }
+                if (!color) {
+                  const ci = si * 4;
+                  if (capture.colors[ci + 3] !== 0) {
+                    color = [capture.colors[ci], capture.colors[ci + 1], capture.colors[ci + 2]];
+                  }
+                }
+                if (occupied && color) break;
               }
-              if (!color) {
+            }
+          }
+        } else {
+          // Full scan: occupancy is "any source voxel", colour is the mode of the
+          // exact non-transparent colours in the cell — but only of *exposed*
+          // voxels (those with an air neighbour). Real captures tint hidden
+          // interior faces too, and counting those would drown surface colours
+          // like eyes in the layers behind them. A cell with no exposed coloured
+          // voxel falls back to counting all of them, so fully solid captures
+          // still get a colour. Ties are resolved by total squared distance to
+          // the cell centre (nearest wins), then by colour key — all independent
+          // of scan order, so mirrored inputs produce mirrored outputs.
+          const xLo = bx[ox];
+          const yLo = by[oy];
+          const zLo = bz[oz];
+          const xHi = bx[ox + 1];
+          const yHi = by[oy + 1];
+          const zHi = bz[oz + 1];
+          const cx = (xLo + xHi) / 2;
+          const cy = (yLo + yHi) / 2;
+          const cz = (zLo + zHi) / 2;
+          const tally = new Map<
+            number,
+            { count: number; dist: number; exposed: number; eDist: number }
+          >();
+          let anyExposed = false;
+          for (let y = yLo; y < yHi; y++) {
+            for (let z = zLo; z < zHi; z++) {
+              const dzz = (z + 0.5 - cz) ** 2;
+              for (let x = xLo; x < xHi; x++) {
+                const si = captureIndex(capture, x, y, z);
+                if ((capture.occupancy[si >> 3] & (1 << (si & 7))) !== 0) occupied = true;
                 const ci = si * 4;
-                if (capture.colors[ci + 3] !== 0) {
-                  color = [capture.colors[ci], capture.colors[ci + 1], capture.colors[ci + 2]];
+                if (capture.colors[ci + 3] === 0) continue;
+                const key =
+                  (capture.colors[ci] << 16) | (capture.colors[ci + 1] << 8) | capture.colors[ci + 2];
+                const d2 = (x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 + dzz;
+                const exposed =
+                  !occupiedAt(x - 1, y, z) ||
+                  !occupiedAt(x + 1, y, z) ||
+                  !occupiedAt(x, y - 1, z) ||
+                  !occupiedAt(x, y + 1, z) ||
+                  !occupiedAt(x, y, z - 1) ||
+                  !occupiedAt(x, y, z + 1);
+                if (exposed) anyExposed = true;
+                const entry = tally.get(key);
+                if (entry) {
+                  entry.count += 1;
+                  entry.dist += d2;
+                  if (exposed) {
+                    entry.exposed += 1;
+                    entry.eDist += d2;
+                  }
+                } else {
+                  tally.set(key, {
+                    count: 1,
+                    dist: d2,
+                    exposed: exposed ? 1 : 0,
+                    eDist: exposed ? d2 : 0,
+                  });
                 }
               }
-              if (occupied && color) break;
             }
+          }
+          let bestKey = -1;
+          let bestCount = 0;
+          let bestDist = 0;
+          for (const [key, entry] of tally) {
+            const votes = anyExposed ? entry.exposed : entry.count;
+            if (votes === 0) continue;
+            const dist = anyExposed ? entry.eDist : entry.dist;
+            if (
+              votes > bestCount ||
+              (votes === bestCount &&
+                (dist < bestDist - 1e-9 || (dist <= bestDist + 1e-9 && (bestKey < 0 || key < bestKey))))
+            ) {
+              bestKey = key;
+              bestCount = votes;
+              bestDist = dist;
+            }
+          }
+          if (bestKey >= 0) {
+            color = [(bestKey >> 16) & 0xff, (bestKey >> 8) & 0xff, bestKey & 0xff];
           }
         }
 

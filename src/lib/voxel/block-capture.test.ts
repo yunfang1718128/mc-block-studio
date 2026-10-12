@@ -105,11 +105,11 @@ describe("block capture vs built-in block replica", () => {
 
   it("are the same model at 1× magnification", () => {
     const fromCapture = buildCapture(makeCubeCapture(), palette, {
-      magnification: 1,
+      scale: { num: 1, den: 1 },
       interior: "hollow",
       cull: true,
     }).model;
-    const fromTextures = buildBlockReplica(makeTextures(), palette, { magnification: 1 });
+    const fromTextures = buildBlockReplica(makeTextures(), palette, { scale: { num: 1, den: 1 } });
     expect(fromCapture.sizeX).toBe(fromTextures.sizeX);
     expect(shellCount(fromCapture)).toBe(shellCount(fromTextures));
     expect(outerLayer(fromCapture)).toEqual(outerLayer(fromTextures));
@@ -125,11 +125,11 @@ describe("block capture vs built-in block replica", () => {
    */
   it("are indistinguishable from outside at 2× magnification", () => {
     const fromCapture = buildCapture(makeCubeCapture(), palette, {
-      magnification: MAG,
+      scale: { num: MAG, den: 1 },
       interior: "hollow",
       cull: true,
     });
-    const fromTextures = buildBlockReplica(makeTextures(), palette, { magnification: MAG });
+    const fromTextures = buildBlockReplica(makeTextures(), palette, { scale: { num: MAG, den: 1 } });
 
     expect(fromCapture.model.sizeX).toBe(SIZE * MAG);
     expect(fromCapture.model.sizeY).toBe(fromTextures.sizeY);
@@ -144,7 +144,7 @@ describe("block capture vs built-in block replica", () => {
 
   it("leaves the interior empty when hollowing a block capture", () => {
     const { model } = buildCapture(makeCubeCapture(), palette, {
-      magnification: MAG,
+      scale: { num: MAG, den: 1 },
       interior: "hollow",
       cull: true,
     });
@@ -158,12 +158,12 @@ describe("block capture vs built-in block replica", () => {
 
   it("fills the interior when asked for a solid block capture", () => {
     const hollow = buildCapture(makeCubeCapture(), palette, {
-      magnification: MAG,
+      scale: { num: MAG, den: 1 },
       interior: "hollow",
       cull: true,
     }).model;
     const filled = buildCapture(makeCubeCapture(), palette, {
-      magnification: MAG,
+      scale: { num: MAG, den: 1 },
       interior: "fill",
       cull: true,
       filler: { name: "minecraft:stone" },
@@ -184,7 +184,7 @@ describe("block capture vs built-in block replica", () => {
     expect([capture.sizeX, capture.sizeY, capture.sizeZ]).toEqual([SIZE, SIZE, SIZE]);
 
     const { model } = buildCapture(capture, palette, {
-      magnification: 1,
+      scale: { num: 1, den: 1 },
       interior: "hollow",
       cull: true,
     });
